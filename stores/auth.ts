@@ -51,6 +51,27 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function register(data: any) {
+        try {
+            const config = useRuntimeConfig();
+            const res = await $fetch<Login>(config.public.API_URL + '/api/auth/register', {
+                method: 'POST',
+                body: data,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            localStorage.setItem('token', res.token);
+            token.value = res.token;
+
+            whoami();
+        } catch (error) {
+            console.error('AUTH::STORE::REGISTER');
+            console.error(error);
+        }
+    }
+
     if (typeof window !== 'undefined') {
         init();
     }
@@ -62,5 +83,6 @@ export const useAuthStore = defineStore('auth', () => {
         init,
         login,
         whoami,
+        register,
     }
 });
