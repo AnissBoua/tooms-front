@@ -1,27 +1,34 @@
+import type { Login } from "~/types/http/auth/login";
 import type { User } from "~/types/user";
+import type { Whoami } from "~/types/http/auth/whoami";
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
     const token = ref<string | null>(null);
     const user = ref<User | null>(null);
 
+    async function init() {
+        if (!token.value) token.value = await Promise.resolve(localStorage.getItem('token'));
+        console.log(token.value);
+        if (token.value && !user.value) whoami();
+    }
+
     async function login(email: string, password: string) {
         try {
             const config = useRuntimeConfig();
-            const response = await fetch(config.public.API_URL + '/api/auth/login', {
+            const data = await $fetch<Login>(config.public.API_URL + '/api/auth/login', {
                 method: 'POST',
+                body: { email, password },
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, password }),
             });
-    
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Login failed');
-            }
-    
-            const data = await response.json();
+
+            localStorage.setItem('token', data.token);
             token.value = data.token;
+
+            whoami();
         } catch (error) {
             console.error('AUTH::STORE::LOGIN');
             console.error(error);
@@ -29,22 +36,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function whoami() {
-        console.log('WHOAMI');
-        
         try {
             const config = useRuntimeConfig();
-            const response = await fetch(config.public.API_URL + '/api/auth/whoami', {
+            const data = await $fetch<Whoami>(config.public.API_URL + '/api/auth/whoami', {
                 headers: {
                     Authorization: `Bearer ${token.value}`,
                 },
             })
 
-            if (!response.ok) {
-                token.value = null;
-                return;
-            }
-
-            const data = await response.json();
             user.value = data;
         } catch (error) {
             console.error('AUTH::STORE::WHOAMI');
@@ -52,10 +51,38 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function register(data: any) {
+        try {
+            const config = useRuntimeConfig();
+            const res = await $fetch<Login>(config.public.API_URL + '/api/auth/register', {
+                method: 'POST',
+                body: data,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            localStorage.setItem('token', res.token);
+            token.value = res.token;
+
+            whoami();
+        } catch (error) {
+            console.error('AUTH::STORE::REGISTER');
+            console.error(error);
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        init();
+    }
+
+
     return {
         token,
         user,
+        init,
         login,
         whoami,
+        register,
     }
 });
