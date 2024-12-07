@@ -7,12 +7,16 @@
 </template>
 
 <script setup lang="ts">
-// SETUP
 useHead({
   bodyAttrs: {
     class: 'bg-black text-sm'
   }
 })
+
+const ws = useWebSocketStore();
+onMounted(() => {
+  ws.init();
+});
 </script>
 
 <style>

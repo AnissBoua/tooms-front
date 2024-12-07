@@ -10,7 +10,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function init() {
         if (!token.value) token.value = await Promise.resolve(localStorage.getItem('token'));
-        console.log(token.value);
         if (token.value && !user.value) whoami();
     }
 
