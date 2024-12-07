@@ -1,6 +1,6 @@
 <template>
-    <div class="flex">
-        <div v-if="!isAuth" class="w-1/6">
+    <div class="flex h-screen">
+        <div v-if="!isAuth" class="w-1/6 border-r border-neutral-800">
             <Sidebar />
         </div>
         <div class="flex-1">

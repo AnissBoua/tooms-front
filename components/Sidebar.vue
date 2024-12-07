@@ -5,7 +5,17 @@
             <Icon name="hugeicons:message-multiple-01" class="text-2xl" />
         </div>
         <div>
-            <Conversation />
+            <template v-for="(conversation) in store.conversations" :key="conversation.id">
+                <Conversation :conversation="conversation"/>
+            </template>
         </div>
     </div>
 </template>
+
+<script setup lang="ts">
+const store = useConversationStore();
+
+onMounted(() => {
+    store.get();
+});
+</script>
