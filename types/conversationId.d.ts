@@ -1,8 +1,6 @@
 import type { User } from '~/types/user'
 import type { Message } from '~/types/message'
 
-export interface Conversation {
+export interface ConversationId {
     id: number;
-    participants: User[];
-    messages: Message[];
 }
