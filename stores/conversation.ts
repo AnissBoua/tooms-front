@@ -26,7 +26,6 @@ export const useConversationStore = defineStore('conversation', () => {
     }
 
     async function messages(page: number) {
-        console.log(conversation.value);
         if (!conversation.value) return;
         try {
             const config = useRuntimeConfig();
@@ -43,6 +42,11 @@ export const useConversationStore = defineStore('conversation', () => {
         }
     }
 
+    function addMessage(message: Message) {
+        if (!conversation.value) return;
+        conversation.value.messages.push(message);
+    }
+
     function initials(user: User) {
         return user.name.charAt(0).toUpperCase() + user.lastname.charAt(0).toUpperCase();
     }
@@ -52,6 +56,7 @@ export const useConversationStore = defineStore('conversation', () => {
         conversation,
         get,
         messages,
+        addMessage,
         initials,
     }
 });

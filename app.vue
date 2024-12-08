@@ -7,12 +7,19 @@
 </template>
 
 <script setup lang="ts">
-// SETUP
 useHead({
   bodyAttrs: {
     class: 'bg-black text-sm'
   }
 })
+
+const auth = useAuthStore();
+const ws = useWebSocketStore();
+watch(() => auth.token, (token) => {
+  if (!token) return;
+  if (ws.status == "connected") return;
+  ws.init();
+});
 </script>
 
 <style>
