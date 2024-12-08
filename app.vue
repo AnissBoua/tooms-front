@@ -13,8 +13,11 @@ useHead({
   }
 })
 
+const auth = useAuthStore();
 const ws = useWebSocketStore();
-onMounted(() => {
+watch(() => auth.token, (token) => {
+  if (!token) return;
+  if (ws.status == "connected") return;
   ws.init();
 });
 </script>

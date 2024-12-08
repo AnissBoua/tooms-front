@@ -4,7 +4,7 @@
         <div class="relative z-10 flex flex-1 flex-col items-center justify-center space-y-10">
             <p class="text-xl">Login to Tooms</p>
             <div class="w-1/3 bg-neutral-950 bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-50 ring-1 ring-neutral-800/50 rounded-2xl space-y-7 px-14 py-14">
-                <Input @change="email = $event" label="Username or email" name="email" id="email" placeholder="Username or email" icon="material-symbols:account-circle-full" />
+                <Input @update:input="email = $event" :input="email" label="Username or email" name="email" id="email" placeholder="Username or email" icon="material-symbols:account-circle-full" />
                 <div class="space-y-2">
                     <div class="flex justify-between">
                         <label for="password">Password</label>

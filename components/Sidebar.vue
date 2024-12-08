@@ -13,9 +13,12 @@
 </template>
 
 <script setup lang="ts">
+const auth = useAuthStore();
 const store = useConversationStore();
 
 onMounted(() => {
+    if (!auth.token) return;
+    if (store.conversations.length) return;
     store.get();
 });
 </script>
