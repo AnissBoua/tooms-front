@@ -1,5 +1,5 @@
 <template>
-    <div v-if="store.conversation" class="h-full flex flex-col justify-end ">
+    <div v-if="store.conversation" class="h-full flex flex-col">
         <div class="flex items-center justify-between border-b border-neutral-800 p-4">
             <div class="flex items-center space-x-4">
                 <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
@@ -14,14 +14,16 @@
             <video ref="video" class="" autoplay playsinline ></video>
             <video ref="remote" class="" autoplay playsinline ></video>
         </div>
-        <div class="overflow-y-scroll space-y-6 p-2 custom-scrollbar" ref="messages">
-            <template v-for="(msg, index) in store.conversation.messages" :key="msg.id">
-                <Message :message="msg" :prev_user="prev_user(index)" />
-            </template>
-        </div>
-        <div class="flex space-x-4 p-2">
-            <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
-            <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
+        <div class="flex flex-col flex-1 justify-end">
+            <div class="flex flex-col flex-1 justify-end overflow-y-scroll space-y-6 p-2 custom-scrollbar" ref="messages">
+                <template v-for="(msg, index) in store.conversation.messages" :key="msg.id">
+                    <Message :message="msg" :prev_user="prev_user(index)" />
+                </template>
+            </div>
+            <div class="flex space-x-4 p-2">
+                <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
+                <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
+            </div>
         </div>
     </div>
 </template>
@@ -168,15 +170,15 @@ const name = () => {
 
 <style>
 .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
+  width: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #4B5563;
-    border-radius: 4px;
+    background-color: #ccc;
+    border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    background-color: #2D3748;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #aaa;
 }
 </style>
