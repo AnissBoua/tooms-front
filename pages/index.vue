@@ -1,13 +1,29 @@
 <template>
-    <div v-if="store.conversation" class="h-full flex flex-col justify-end ">
-        <div class="overflow-y-scroll space-y-6 p-2 custom-scrollbar" ref="messages">
-            <template v-for="(msg, index) in store.conversation.messages" :key="msg.id">
-                <Message :message="msg" :prev_user="prev_user(index)" />
-            </template>
+    <div v-if="store.conversation" class="h-full flex flex-col">
+        <div class="flex items-center justify-between border-b border-neutral-800 p-4">
+            <div class="flex items-center space-x-4">
+                <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
+                <p> {{ name() }} </p>
+            </div>
+            <div class="space-x-6">
+                <Icon @click="visiocall" name="solar:camera-outline" class="text-3xl hover:text-violet-600 cursor-pointer" />
+                <Icon name="line-md:phone" class="text-3xl hover:text-violet-600 cursor-pointer" />
+            </div>
         </div>
-        <div class="flex space-x-4 p-2">
-            <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
-            <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
+        <div v-if="rtc.stream">
+            <video ref="video" class="" autoplay playsinline ></video>
+            <video ref="remote" class="" autoplay playsinline ></video>
+        </div>
+        <div class="flex flex-col flex-1 justify-end">
+            <div class="flex flex-col flex-1 justify-end overflow-y-scroll space-y-6 p-2 custom-scrollbar" ref="messages">
+                <template v-for="(msg, index) in store.conversation.messages" :key="msg.id">
+                    <Message :message="msg" :prev_user="prev_user(index)" />
+                </template>
+            </div>
+            <div class="flex space-x-4 p-2">
+                <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
+                <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
+            </div>
         </div>
     </div>
 </template>
@@ -18,9 +34,15 @@ import type { Message } from '~/types/message';
 const auth = useAuthStore();
 const store = useConversationStore();
 const ws = useWebSocketStore();
+const rtc = useWebRTCStore();
+
+const scroll = ref<number>(0);
+
 const message = ref<string>('');
 const messages = ref<HTMLElement | null>(null);
-const scroll = ref<number>(0);
+
+const video = ref<HTMLVideoElement | null>(null);
+const remote = ref<HTMLVideoElement | null>(null);
 
 watch(() => store.conversation, (conversation) => {
     if (!conversation) return;
@@ -41,6 +63,33 @@ watch(() => store.conversation?.messages, async (message_list) => {
 
     scroll.value = messages.value.scrollHeight;
 }, { deep: true });
+
+
+watch(() => video.value, (el) => {
+    if (!el) return;
+    setupcall();
+});
+
+watch(() => rtc.remoteStreams.values(), (streams) => {
+    console.log(streams);
+    const list = Array.from(streams);
+    if (!list.length) return;
+    if (!remote.value) return;
+
+    remote.value.srcObject = list[0]
+})
+
+const visiocall = async () => {
+    rtc.init();
+}
+
+const setupcall = () => {
+    if (!rtc.stream) return;
+    if (!video.value) return;
+    // console.log(rtc.stream.getVideoTracks()[0].getSettings());
+    
+    video.value.srcObject = rtc.stream;
+}
 
 const prev_user = (index: number) => {
     if (index === 0) return null;
@@ -65,19 +114,71 @@ const send = () => {
 
     message.value = '';
 }
+
+// const keys = ref<Map<string, boolean>>(new Map());
+// const handleKeyPress = (event: KeyboardEvent) => {
+//     event.preventDefault(); // Prevent default browser behavior, e.g., search.
+//     keys.value.set(event.key, event.type == 'keydown');
+
+//     if (keys.value.get('Control') && keys.value.get('k')) {
+//         if (!rtc.stream) return;
+//         rtc.stream.getVideoTracks()[0].enabled = !rtc.stream.getVideoTracks()[0].enabled;
+//     }
+// };
+
+// onMounted(() => {
+//     document.addEventListener('keydown', handleKeyPress);
+//     document.addEventListener('keyup', handleKeyPress);
+// });
+
+// onBeforeUnmount(() => {
+//     document.removeEventListener('keydown', handleKeyPress);
+//     document.addEventListener('keyup', handleKeyPress);
+// });
+
+
+
+// TODO: move this to conversation store
+const user = computed(() => {
+    if (!auth.user) return null;
+    if (!store.conversation) return null;
+    const id = auth.user.id;
+    const notMe = store.conversation.participants.filter((participant) => participant.id !== id);
+    return notMe[0];
+});
+
+const name = () => {
+    if (!auth.user) return;
+    if (!store.conversation) return null;
+
+    const id = auth.user.id;
+    const notMe = store.conversation.participants.filter((participant) => participant.id !== id);
+
+    let name: string = ''; 
+    for (const [index, participant] of notMe.entries()) {
+        name += participant.name + ' ' + participant.lastname;
+        if (index < notMe.length - 1) name += ', ';
+        if (index === 2) {
+            name += '...';
+            break;
+        }
+    }
+
+    return name;
+}
 </script>
 
 <style>
 .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
+  width: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #4B5563;
-    border-radius: 4px;
+    background-color: #ccc;
+    border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    background-color: #2D3748;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #aaa;
 }
 </style>
