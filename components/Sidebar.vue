@@ -22,8 +22,14 @@
 const auth = useAuthStore();
 const store = useConversationStore();
 
+watch(() => auth.user, (user) => {
+    if (!user) return;
+    if (store.conversations.length) return;
+    store.get();
+});
+
 onMounted(() => {
-    if (!auth.token) return;
+    if (!auth.user) return;
     if (store.conversations.length) return;
     store.get();
 });

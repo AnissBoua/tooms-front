@@ -16,6 +16,27 @@ export const useAuthStore = defineStore('auth', () => {
         if (token.value && !user.value) whoami();
     }
 
+    async function register(data: any) {
+        try {
+            const config = useRuntimeConfig();
+            const res = await $fetch<Login>(config.public.API_URL + '/api/auth/register', {
+                method: 'POST',
+                body: data,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            localStorage.setItem('token', res.token);
+            token.value = res.token;
+
+            await whoami();
+        } catch (error) {
+            console.error('AUTH::STORE::REGISTER');
+            console.error(error);
+        }
+    }
+
     async function login(email: string, password: string) {
         try {
             const config = useRuntimeConfig();
@@ -28,12 +49,14 @@ export const useAuthStore = defineStore('auth', () => {
             });
 
             localStorage.setItem('token', data.token);
+            localStorage.setItem('refresh', data.refresh);
             token.value = data.token;
 
-            whoami();
+            await whoami();
         } catch (error) {
             console.error('AUTH::STORE::LOGIN');
             console.error(error);
+            await refresh();
         }
     }
 
@@ -50,32 +73,36 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (error) {
             console.error('AUTH::STORE::WHOAMI');
             console.error(error);
+            await refresh();
         }
     }
 
-    async function register(data: any) {
+    async function refresh() {
         try {
             const config = useRuntimeConfig();
-            const res = await $fetch<Login>(config.public.API_URL + '/api/auth/register', {
+            const data = await $fetch<Login>(config.public.API_URL + '/api/auth/refresh', {
                 method: 'POST',
-                body: data,
+                body: { refresh: localStorage.getItem('refresh') },
                 headers: {
-                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token.value}`,
                 },
             });
 
-            localStorage.setItem('token', res.token);
-            token.value = res.token;
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('refresh', data.refresh);
+            token.value = data.token;
 
-            whoami();
+            await whoami();
         } catch (error) {
-            console.error('AUTH::STORE::REGISTER');
+            console.error('AUTH::STORE::REFRESH');
             console.error(error);
+            logout();
         }
     }
 
     function logout() {
         localStorage.removeItem('token');
+        localStorage.removeItem('refresh');
         token.value = null;
         user.value = null;
         ws.logout();
