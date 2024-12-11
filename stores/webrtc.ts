@@ -44,6 +44,15 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     }
 
+    function logout() {
+        if (stream.value) stream.value.getTracks().forEach(track => track.stop());
+        if (pc.value) pc.value.close();
+        stream.value = null;
+        pc.value = null;
+        candidates.value = [];
+        remoteStreams.value = new Map();
+    }
+
     async function devices(constraints: { audio: boolean, video: any }) {
         return await navigator.mediaDevices.getUserMedia(constraints);
     }
@@ -144,6 +153,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         stream,
         remoteStreams,
         init,
+        logout,
         signaling,
         offer,
         answer,

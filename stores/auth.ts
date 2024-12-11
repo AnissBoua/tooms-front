@@ -5,6 +5,9 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
+    const ws = useWebSocketStore();
+    const conversation = useConversationStore();
+    const rtc = useWebRTCStore();
     const token = ref<string | null>(null);
     const user = ref<User | null>(null);
 
@@ -71,6 +74,16 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    function logout() {
+        localStorage.removeItem('token');
+        token.value = null;
+        user.value = null;
+        ws.logout();
+        conversation.logout();
+        rtc.logout();
+        navigateTo('/auth/login');
+    }
+
     if (typeof window !== 'undefined') {
         init();
     }
@@ -83,5 +96,6 @@ export const useAuthStore = defineStore('auth', () => {
         login,
         whoami,
         register,
+        logout,
     }
 });

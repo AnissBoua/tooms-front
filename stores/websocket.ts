@@ -14,15 +14,6 @@ export const useWebSocketStore = defineStore('ws', () => {
     // disconnected, connected, authenticated
     const status = ref<'disconnected' | 'connected' | 'authenticated'>('disconnected');
 
-    // In case the authentication does not happen after the connection
-    watch(() => auth.token, (token) => {
-        if (status.value === 'authenticated') return;
-        if (!socket.value) return;
-        if (!token) return;
-        console.log("Emitting login event");
-        socket.value.emit("login", "Bearer " + token);
-    });
-
     async function init() {
         if (!socket.value) {
             const config = useRuntimeConfig();
@@ -31,6 +22,7 @@ export const useWebSocketStore = defineStore('ws', () => {
 
         socket.value.on("connect", () => {
             status.value = 'connected';
+            console.log("Connecting to websocket");
             
             if (!auth.token) throw new Error("No token available");
             if (!socket.value) return; // This should never happen, just to satisfy TS
@@ -69,6 +61,13 @@ export const useWebSocketStore = defineStore('ws', () => {
         })
     }
 
+    function logout() {
+        if (!socket.value) return;
+        socket.value.disconnect();
+        socket.value = null;
+        status.value = 'disconnected';
+    }
+
     function send(data: any) {
         if (!socket.value) throw new Error("Socket not initialized"); 
         if (!auth.user) throw new Error("User not authenticated");
@@ -96,6 +95,7 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket,
         status,
         init,
+        logout,
         send,
         call,
         candidate,
