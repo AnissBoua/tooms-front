@@ -71,7 +71,6 @@ watch(() => video.value, (el) => {
 });
 
 watch(() => rtc.remoteStreams.values(), (streams) => {
-    console.log(streams);
     const list = Array.from(streams);
     if (!list.length) return;
     if (!remote.value) return;

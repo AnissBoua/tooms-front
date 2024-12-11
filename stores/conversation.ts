@@ -9,6 +9,11 @@ export const useConversationStore = defineStore('conversation', () => {
     const conversation = ref<Conversation | null>(null);
     const auth = useAuthStore();
 
+    function logout() {
+        conversation.value = null;
+        conversations.value = [];
+    }
+
     async function get() {
         try {
             const config = useRuntimeConfig();
@@ -54,6 +59,7 @@ export const useConversationStore = defineStore('conversation', () => {
     return {
         conversations,
         conversation,
+        logout,
         get,
         messages,
         addMessage,
