@@ -47,14 +47,19 @@ export const useConversationStore = defineStore('conversation', () => {
         return [];
     }
 
-    async function create(users: User[]) {
+    async function create( data: { name: string, users: User[]}) {
         try {
-            const data = await useInterceptorFetch<Conversation>('/api/conversations', {
+            const req = {
+                name: data.name,
+                users: data.users.map(user => user.id),
+            }
+            
+            const res = await useInterceptorFetch<Conversation>('/api/conversations', {
                 method: 'POST',
-                body: { users: users.map(user => user.id) },
+                body: req,
             });
 
-            conversations.value.push(data);
+            conversations.value.push(res);
         } catch (error) {
             console.error('CONVERSATION::STORE::CREATE');
             console.error(error);

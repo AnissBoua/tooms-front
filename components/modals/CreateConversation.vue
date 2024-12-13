@@ -71,12 +71,16 @@ watch(() => search.value, (value) => {
     }, 500);
 });
 
-const available = computed(() => {
+const available = computed<User[]>(() => {
     const ids = selected.value.map((contact) => contact.id);
     return contacts.value.filter((contact) => !ids.includes(contact.id));
 });
 
 const create = () => {
-    store.create(selected.value);
+    const data = {
+        name: group.value,
+        users: selected.value
+    };
+    store.create(data);
 }
 </script>
