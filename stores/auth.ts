@@ -18,13 +18,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function register(data: any) {
         try {
-            const config = useRuntimeConfig();
-            const res = await $fetch<Login>(config.public.API_URL + '/api/auth/register', {
+            const res = await useInterceptorFetch<Login>('/api/auth/register', {
                 method: 'POST',
                 body: data,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
             });
 
             localStorage.setItem('token', res.token);
@@ -39,13 +35,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function login(email: string, password: string) {
         try {
-            const config = useRuntimeConfig();
-            const data = await $fetch<Login>(config.public.API_URL + '/api/auth/login', {
+            const data = await useInterceptorFetch<Login>('/api/auth/login', {
                 method: 'POST',
                 body: { email, password },
-                headers: {
-                    'Content-Type': 'application/json',
-                },
             });
 
             localStorage.setItem('token', data.token);
@@ -56,36 +48,24 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (error) {
             console.error('AUTH::STORE::LOGIN');
             console.error(error);
-            await refresh();
         }
     }
 
     async function whoami() {
         try {
-            const config = useRuntimeConfig();
-            const data = await $fetch<Whoami>(config.public.API_URL + '/api/auth/whoami', {
-                headers: {
-                    Authorization: `Bearer ${token.value}`,
-                },
-            })
-
+            const data = await useInterceptorFetch<Whoami>('/api/auth/whoami');
             user.value = data;
         } catch (error) {
             console.error('AUTH::STORE::WHOAMI');
             console.error(error);
-            await refresh();
         }
     }
 
     async function refresh() {
         try {
-            const config = useRuntimeConfig();
-            const data = await $fetch<Login>(config.public.API_URL + '/api/auth/refresh', {
+            const data = await useInterceptorFetch<Login>('/api/auth/refresh', {
                 method: 'POST',
                 body: { refresh: localStorage.getItem('refresh') },
-                headers: {
-                    Authorization: `Bearer ${token.value}`,
-                },
             });
 
             localStorage.setItem('token', data.token);
@@ -123,6 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
         login,
         whoami,
         register,
+        refresh,
         logout,
     }
 });
