@@ -170,14 +170,15 @@ const name = () => {
 <style>
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #ccc;
+    background-color: #3d3d3d;
     border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #aaa;
+    background-color: #2a2a2a;
 }
 </style>
