@@ -8,5 +8,6 @@ export default defineNuxtConfig({
       API_URL: process.env.API_URL || 'http://localhost:7000',
       WS_URL: process.env.WS_URL || 'http://localhost:7000'
     }
-  }
+  },
+  css: ['~/assets/css/main.css'],
 })
