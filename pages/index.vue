@@ -1,9 +1,9 @@
 <template>
-    <div v-if="store.conversation" class="h-full flex flex-col">
+    <div v-if="store.conversation" class="min-h-screen max-h-screen h-screen flex flex-col">
         <div class="flex items-center justify-between border-b border-neutral-800 p-4">
             <div class="flex items-center space-x-4">
                 <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
-                <p> {{ name() }} </p>
+                <p> {{ store.conversation.name || name() }} </p>
             </div>
             <div class="space-x-6">
                 <Icon @click="visiocall" name="solar:camera-outline" class="text-3xl hover:text-violet-600 cursor-pointer" />
@@ -14,16 +14,16 @@
             <video ref="video" class="" autoplay playsinline ></video>
             <video ref="remote" class="" autoplay playsinline ></video>
         </div>
-        <div class="flex flex-col flex-1 justify-end">
-            <div class="flex flex-col flex-1 justify-end overflow-y-scroll space-y-6 p-2 custom-scrollbar" ref="messages">
+        <div class="flex flex-1 flex-col-reverse overflow-y-scroll custom-scrollbar" @scroll="scrolling()" ref="scrollRef">
+            <div class="space-y-6 p-2" ref="messages">
                 <template v-for="(msg, index) in store.conversation.messages" :key="msg.id">
                     <Message :message="msg" :prev_user="prev_user(index)" />
                 </template>
             </div>
-            <div class="flex space-x-4 p-2">
-                <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
-                <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
-            </div>
+        </div>
+        <div class="flex space-x-4 p-2">
+            <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
+            <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
         </div>
     </div>
 </template>
@@ -37,6 +37,7 @@ const ws = useWebSocketStore();
 const rtc = useWebRTCStore();
 
 const scroll = ref<number>(0);
+const scrollRef = ref<HTMLElement | null>(null);
 
 const message = ref<string>('');
 const messages = ref<HTMLElement | null>(null);
@@ -47,7 +48,7 @@ const remote = ref<HTMLVideoElement | null>(null);
 watch(() => store.conversation, (conversation) => {
     if (!conversation) return;
     if (!conversation.messages.length) {
-        store.messages(1);
+        store.messages(conversation.page);
     }
 });
 
@@ -114,26 +115,28 @@ const send = () => {
     message.value = '';
 }
 
-// const keys = ref<Map<string, boolean>>(new Map());
-// const handleKeyPress = (event: KeyboardEvent) => {
-//     event.preventDefault(); // Prevent default browser behavior, e.g., search.
-//     keys.value.set(event.key, event.type == 'keydown');
+const scrolling = async () => {
+    const el = scrollRef.value;
+    if (!el) return;
+    if (!store.conversation) return;
 
-//     if (keys.value.get('Control') && keys.value.get('k')) {
-//         if (!rtc.stream) return;
-//         rtc.stream.getVideoTracks()[0].enabled = !rtc.stream.getVideoTracks()[0].enabled;
-//     }
-// };
+    const scrollTop = el.scrollTop;
+    const scrollHeight = el.scrollHeight;
+    const clientHeight = el.clientHeight;
+    
+    // Detect if scrolled to the top (flex-col-reverse inverts behavior, this is why scrollTop is negative)
+    if (Math.abs(scrollTop) + clientHeight >= scrollHeight) {
+        const count = store.conversation.messages.length;
+        store.conversation.page++;
+        await store.messages(store.conversation.page).then(() => {
+            // If no new messages were added, decrement page
+            if (count === store.conversation?.messages.length) store.conversation.page--;
+        });
 
-// onMounted(() => {
-//     document.addEventListener('keydown', handleKeyPress);
-//     document.addEventListener('keyup', handleKeyPress);
-// });
+    }
+}
 
-// onBeforeUnmount(() => {
-//     document.removeEventListener('keydown', handleKeyPress);
-//     document.addEventListener('keyup', handleKeyPress);
-// });
+
 
 
 
@@ -166,18 +169,3 @@ const name = () => {
     return name;
 }
 </script>
-
-<style>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #ccc;
-    border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #aaa;
-}
-</style>

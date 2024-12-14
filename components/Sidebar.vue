@@ -3,9 +3,12 @@
         <div class="space-y-4">
             <div class="flex items-center justify-between">
                 <p>Conversation</p>
-                <Icon name="hugeicons:message-multiple-01" class="text-2xl" />
+                <Icon name="hugeicons:message-add-01" class="text-2xl hover:text-violet-600 cursor-pointer" @click="searching = true" />
+                <div v-if="searching" class="fixed inset-0 bg-black/50">
+                    <CreateConversation />
+                </div>
             </div>
-            <div>
+            <div class="space-y-2">
                 <template v-for="(conversation) in store.conversations" :key="conversation.id">
                     <Conversation :conversation="conversation"/>
                 </template>
@@ -19,13 +22,27 @@
 </template>
 
 <script setup lang="ts">
+import CreateConversation from './modals/CreateConversation.vue';
+
 const auth = useAuthStore();
 const store = useConversationStore();
+const searching = ref(false);
+const search = ref('');
+const contacts = ref<ReturnType<typeof store.search> | null>(null);
+const timer = ref<ReturnType<typeof setTimeout> | null>(null);
 
 watch(() => auth.user, (user) => {
     if (!user) return;
     if (store.conversations.length) return;
     store.get();
+});
+
+watch(() => search.value, (value) => {
+    if (!value) return;
+    if (timer.value) clearTimeout(timer.value);
+    timer.value = setTimeout(() => {
+        contacts.value = store.search(value);
+    }, 500);
 });
 
 onMounted(() => {

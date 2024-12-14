@@ -7,7 +7,6 @@ import type { User } from '~/types/user';
 export const useConversationStore = defineStore('conversation', () => {
     const conversations = ref<Conversation[]>([]);
     const conversation = ref<Conversation | null>(null);
-    const auth = useAuthStore();
 
     function logout() {
         conversation.value = null;
@@ -16,12 +15,8 @@ export const useConversationStore = defineStore('conversation', () => {
 
     async function get() {
         try {
-            const config = useRuntimeConfig();
-            const data = await $fetch<Conversation[]>(config.public.API_URL + '/api/conversations', {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`,
-                },
-            });
+            const data = await useInterceptorFetch<Conversation[]>('/api/conversations');
+            data.forEach(conversation => conversation.page = 1);
 
             conversations.value = data;
         } catch (error) {
@@ -33,16 +28,41 @@ export const useConversationStore = defineStore('conversation', () => {
     async function messages(page: number) {
         if (!conversation.value) return;
         try {
-            const config = useRuntimeConfig();
-            const data = await $fetch<Message[]>(config.public.API_URL + `/api/conversations/${conversation.value?.id}/messages?page=${page}`, {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`,
-                },
-            });
-
-            conversation.value.messages.push(...data);
+            const data = await useInterceptorFetch<Message[]>(`/api/conversations/${conversation.value?.id}/messages?page=${page}`);
+            conversation.value.messages.unshift(...data);
         } catch (error) {
             console.error('CONVERSATION::STORE::MESSAGES');
+            console.error(error);
+        }
+    }
+
+    async function search(search: string) {
+        try {
+            const data = await useInterceptorFetch<User[]>(`/api/users/search?search=${search}`);
+            return data;
+        } catch (error) {
+            console.error('CONVERSATION::STORE::SEARCH');
+            console.error(error);
+        }
+
+        return [];
+    }
+
+    async function create( data: { name: string, users: User[]}) {
+        try {
+            const req = {
+                name: data.name,
+                users: data.users.map(user => user.id),
+            }
+            
+            const res = await useInterceptorFetch<Conversation>('/api/conversations', {
+                method: 'POST',
+                body: req,
+            });
+
+            conversations.value.push(res);
+        } catch (error) {
+            console.error('CONVERSATION::STORE::CREATE');
             console.error(error);
         }
     }
@@ -62,6 +82,8 @@ export const useConversationStore = defineStore('conversation', () => {
         logout,
         get,
         messages,
+        search,
+        create,
         addMessage,
         initials,
     }
