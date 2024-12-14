@@ -9,20 +9,9 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
         ...options?.headers,
         Authorization: `Bearer ${auth.token}`,
       },
-      // Optional hooks for logging or debugging
-      onRequest({ request, options }) {
-        // console.log("Request:", request, options);
-      },
-      onRequestError({ request, options, error }) {
-        // console.error("Request error:", error);
-      },
-      onResponse({ request, response, options }) {
-        // console.log("Response:", response);
-      },
-      onResponseError({ request, response, options }) {
+      async onResponseError({ request, response, options }) {
         if (response?.status === 401) {
-          console.error("Unauthorized: refreshing token...");
-          auth.refresh();
+          await auth.refresh();
         } else {
           console.error("Response error:", response?.status);
         }
@@ -31,7 +20,13 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
 
     return response;
   } catch (error) {
-    console.error("Fetch error:", error);
-    throw error;
+    try {
+      // Try the request again
+      return await useInterceptorFetch<T>(url, options);
+    } catch (error) {
+      console.log("Url:", url);
+      console.error("Fetch error:", error);
+      throw error;
+    }
   }
 };
