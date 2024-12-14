@@ -16,6 +16,7 @@ export const useConversationStore = defineStore('conversation', () => {
     async function get() {
         try {
             const data = await useInterceptorFetch<Conversation[]>('/api/conversations');
+            data.forEach(conversation => conversation.page = 1);
 
             conversations.value = data;
         } catch (error) {
@@ -28,7 +29,7 @@ export const useConversationStore = defineStore('conversation', () => {
         if (!conversation.value) return;
         try {
             const data = await useInterceptorFetch<Message[]>(`/api/conversations/${conversation.value?.id}/messages?page=${page}`);
-            conversation.value.messages.push(...data);
+            conversation.value.messages.unshift(...data);
         } catch (error) {
             console.error('CONVERSATION::STORE::MESSAGES');
             console.error(error);
