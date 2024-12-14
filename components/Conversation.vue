@@ -1,7 +1,7 @@
 <template>
     <div @click="select" class="flex items-center hover:bg-violet-900/30 rounded-md cursor-pointer space-x-2 px-3 py-2" :class="{'bg-violet-900/30 ring-1 ring-violet-800/50': isSelected}">
         <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
-        <p class="text-sm text-neutral-200"> {{ name() }} </p>
+        <p class="text-sm text-neutral-200"> {{ conversation.name || name() }} </p>
     </div>
 </template>
 
