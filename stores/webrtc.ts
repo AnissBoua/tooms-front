@@ -84,7 +84,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
     watch(() => screen.value, async (value) => {
         if (!pc.value) return;
         if (!stream.value) return;
-        
+
         if (value) {
             if (!auth.user) return;
             if (!conversation.conversation) return;
@@ -289,6 +289,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
     function remotestream() {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         pc.value.ontrack = (event) => {
+            console.log('Track received:', event.track);
+            console.log('Stream:', event.streams);
+            
             const ids = streams.value.map(s => s.stream.id);
             for (const s of event.streams) {
                 if (ids.includes(s.id)) continue;
