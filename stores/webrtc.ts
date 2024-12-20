@@ -358,7 +358,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         pc.value.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
             if (event.candidate) {
-                console.log('[ICE Candidate]', event.candidate);
                 candidates.value.push(event.candidate)
             }
         }
@@ -367,6 +366,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
     function sendcandidates() {
         if (!auth.user) throw new Error("No user authenticated");
         if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
+        console.log('Sending candidates:', candidates.value);
+        
         for (const candidate of candidates.value) {
             const c: RTCCandidate = {
                 user: auth.user.id,
