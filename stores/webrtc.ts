@@ -334,6 +334,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     function syncstreams(signal: RTCSignal) {
+        console.log('Syncing streams:', signal);
+        console.log('Streams:', streams.value);
         for (const stream of streams.value) {
             if (stream.stream.id == signal.stream_id) stream.signal = signal;
         }
