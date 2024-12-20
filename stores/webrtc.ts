@@ -23,7 +23,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     watch(() => checking.value, (value) => {
         console.log('Checking:', value);
-        if (value) return;
+        if (!value) return;
         sendcandidates();
     });
 
