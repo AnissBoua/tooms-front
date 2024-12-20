@@ -12,15 +12,18 @@
         </div>
         <div v-if="rtc.stream" class="absolute w-full bg-neutral-900">
             <div class="flex space-x-4 p-4" ref="videos">
-                <template v-for="stream of rtc.streams" :key="stream.stream.id">
-                    <video v-if="stream.signal?.video" :id="stream.stream.id" :srcObject="stream.stream" class="w-1/2 rounded-xl overflow-hidden object-cover" autoplay playsinline >
-                    </video>
-                    <div v-else class="flex items-center justify-center w-1/2 bg-neutral-800 rounded-xl">
-                        <div v-if="user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(user) }} </div>
-                    </div>
-                </template>
-                <div class="flex w-1/2">
-                    <video ref="video" class="w-full rounded-xl overflow-hidden object-cover" autoplay playsinline ></video>
+                <video v-if="focus?.signal?.video" :srcObject="focus.stream" class="w-1/2 rounded-xl overflow-hidden object-cover" autoplay playsinline ></video>
+                <div v-else class="flex items-center justify-center w-1/2 bg-neutral-800 rounded-xl">
+                    <div v-if="focus?.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(focus?.signal.user) }} </div>
+                </div>
+                <div class="flex space-x-4" :class="{'w-1/2': focus, 'w-full': !focus}">
+                    <template v-for="stream of rtc.streams.filter(s => s.stream.id != focus?.stream.id)" :key="stream.stream.id">
+                        <video v-if="stream.signal?.video" :id="stream.stream.id" :srcObject="stream.stream" class="w-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
+                        </video>
+                        <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
+                            <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
+                        </div>
+                    </template>
                 </div>
             </div>
             <div class="relative flex items-center justify-center w-full mb-4">
@@ -62,6 +65,7 @@
 
 <script setup lang="ts">
 import type { Message } from '~/types/message';
+import type { RTCStream } from '~/types/WebRTC/RTCStream';
 
 const auth = useAuthStore();
 const store = useConversationStore();
@@ -76,8 +80,8 @@ const messages = ref<HTMLElement | null>(null);
 
 const oncall = ref<boolean>(false);
 const videos = ref<HTMLDivElement | null>(null);
+const focus = ref<RTCStream | null>(null);
 const video = ref<HTMLVideoElement | null>(null);
-const remote = ref<HTMLVideoElement | null>(null);
 
 watch(() => store.conversation, (conversation) => {
     if (!conversation) return;
@@ -101,10 +105,15 @@ watch(() => store.conversation?.messages, async (message_list) => {
 }, { deep: true });
 
 
-watch(() => video.value, (el) => {
-    if (!el) return;
+watch(() => rtc.stream, (stream) => {
+    if (!stream) return;
     setupcall();
 });
+
+watch(() => rtc.streams, (streams) => {
+    if (!streams.length) return;
+    focus.value = streams[0];
+}, { deep: true });
 
 const visiocall = async () => {
     rtc.init({ audio: true, video: true });
@@ -116,9 +125,6 @@ const audiocall = async () => {
 
 const setupcall = () => {
     if (!rtc.stream) return;
-    if (!video.value) return;
-
-    video.value.srcObject = rtc.stream;
     oncall.value = true;
 }
 
@@ -170,14 +176,9 @@ const scrolling = async () => {
 // Resize video
 const resizing = (e: MouseEvent) => {
     if (!videos.value) return;
-    if (!video.value) return;
-    if (!remote.value) return;
 
     const startY = e.clientY;
     const startHeight = videos.value.clientHeight;
-    console.log(startY);
-    console.log(startHeight);
-    
 
     const onMouseMove = (e: MouseEvent) => {
         if (!videos.value) return;
@@ -208,21 +209,16 @@ const toggleaudio = () => {
 
 const togglevideo = () => {
     if (!rtc.stream) return;
-    if (!video.value) return;
-
-    // The order is important
     rtc.video = !rtc.video;
-    video.value.srcObject = rtc.video ? rtc.stream : null;
 }
 
 const togglescreenshare = () => {
     if (!rtc.stream) return;
-    if (!video.value) return;
+    // if (!video.value) return;
 
     // The order is important
     rtc.screen = !rtc.screen;
-    if (!video.value) return;
-    video.value.srcObject = rtc.screen ? rtc.stream : (rtc.video ? rtc.stream : null);
+    // video.value.srcObject = rtc.screen ? rtc.stream : (rtc.video ? rtc.stream : null);
 }
 
 const hangout = () => {

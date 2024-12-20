@@ -28,8 +28,6 @@ onMounted(() => {
 });
 
 watch(() => rtc.call, (call) => {
-    console.log(call);
-    
     if (!call) return;
     if (call.data.type == "offer") {
         incoming.value = call;

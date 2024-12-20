@@ -7,5 +7,6 @@ export interface RTCSignal {
     data: RTCSessionDescriptionInit;
     audio: boolean;
     video: boolean;
+    screen: boolean;
     negotiation: boolean;
 }

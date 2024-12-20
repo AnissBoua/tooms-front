@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import type { RTCCandidate } from '~/types/WebRTC/RTCCandidate';
 import type { RTCSignal } from '~/types/WebRTC/RTCSignal';
 import type { RTCStream } from '~/types/WebRTC/RTCStream';
+import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
 
 export const useWebRTCStore = defineStore('rtc', () => {
     const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]};
@@ -14,7 +15,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
     const audio = ref<boolean>(true);
     const video = ref<boolean>(true);
     const screen = ref<boolean>(false);
-    const remoteStreams = ref<Map<string, MediaStream>>(new Map())
     const streams = ref<RTCStream[]>([]);
     
     const pc = ref<RTCPeerConnection | null>(null);
@@ -71,85 +71,61 @@ export const useWebRTCStore = defineStore('rtc', () => {
             const track = tmp.getVideoTracks()[0];
             stream.value.addTrack(track);
 
-            console.log(stream.value.getVideoTracks());
-            
-
             const sender = pc.value.getSenders().find(sender => sender.track?.kind === 'video');
             if (sender) sender.replaceTrack(track);
             else pc.value.addTrack(track, stream.value);
+        }
+
+        for (const s of streams.value) {
+            if (s.stream.id == stream.value.id) s.signal.video = value;
         }
     });
 
     watch(() => screen.value, async (value) => {
         if (!pc.value) return;
         if (!stream.value) return;
+        
+        if (value) {
+            if (!auth.user) return;
+            if (!conversation.conversation) return;
+            
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            if (!screenStream) return;
 
-        console.log('Screen:', value);
-        if (value && video.value) {
-            const tracks = stream.value.getVideoTracks();
-            tracks.forEach(track => track.stop());
-    
-            for (const sender of pc.value.getSenders()) {
-                if (sender.track?.kind === 'video') pc.value.removeTrack(sender);
-            }
-    
-            for (const track of tracks) {
-                stream.value.removeTrack(track);
-            }
+            const video = screenStream.getVideoTracks()[0];
+            pc.value.addTrack(video, screenStream);
 
-            const tmp = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            if (!tmp) return;
-    
-            const track = tmp.getVideoTracks()[0];
-            stream.value.addTrack(track);
-    
-            const sender = pc.value.getSenders().find(sender => sender.track?.kind === 'video');
-            if (sender) sender.replaceTrack(track);
-            else pc.value.addTrack(track, stream.value);
-        } else if (value && !video.value) {
-            const tmp = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            if (!tmp) return;
-    
-            const track = tmp.getVideoTracks()[0];
-            stream.value.addTrack(track);
-    
-            const sender = pc.value.getSenders().find(sender => sender.track?.kind === 'video');
-            if (sender) sender.replaceTrack(track);
-            else pc.value.addTrack(track, stream.value);
-        } else if (!value && video.value) {
-            const tracks = stream.value.getVideoTracks();
-            tracks.forEach(track => track.stop());
-    
-            for (const sender of pc.value.getSenders()) {
-                if (sender.track?.kind === 'video') pc.value.removeTrack(sender);
-            }
-    
-            for (const track of tracks) {
-                stream.value.removeTrack(track);
-            }
-
-            const tmp = await devices({ audio: false, video: true });
-            if (!tmp) return;
-    
-            const track = tmp.getVideoTracks()[0];
-            stream.value.addTrack(track);
-    
-            const sender = pc.value.getSenders().find(sender => sender.track?.kind === 'video');
-            if (sender) sender.replaceTrack(track);
-            else pc.value.addTrack(track, stream.value);
+            const signal = streams.value.find(s => s.stream.id == stream.value?.id);
+            const RTCSignal: RTCSignal = { 
+                stream_id: screenStream.id, 
+                user: auth.user, 
+                conversation: conversation.conversation.id, 
+                data: signal?.signal?.data,
+                audio: false, 
+                video: true, 
+                screen: true,
+                negotiation: false,
+            };
+            streams.value.push({ stream: screenStream, signal: RTCSignal });
         } else {
-            const tracks = stream.value.getVideoTracks();
-            tracks.forEach(track => track.stop());
-    
-            for (const sender of pc.value.getSenders()) {
-                if (sender.track?.kind === 'video') pc.value.removeTrack(sender);
-            }
-    
-            for (const track of tracks) {
-                stream.value.removeTrack(track);
-            }
+            const screenStream = streams.value.find(s => s.signal?.screen);
+            if (!screenStream) return;
+
+            const video = screenStream.stream.getVideoTracks()[0];
+            const sender = pc.value.getSenders().find(sender => sender.track?.id == video.id);
+            
+            if (sender) pc.value.removeTrack(sender);
+
+            screenStream.stream.getTracks().forEach(track => track.stop());
+            streams.value = streams.value.filter(s => s.stream.id != screenStream.stream.id);
         }
     });
+
+    watch(() => streams.value, (value) => {
+        if (value.length == 0) return;
+
+        requiresignal();
+    }, { deep: true });
 
     async function init(options = { audio: true, video: true }) {
         try {
@@ -205,8 +181,10 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 data: offer,
                 audio: audio.value,
                 video: video.value,
+                screen: screen.value,
                 negotiation: false,
             };
+            streams.value.push({ stream: stream.value, signal: RTCSignal });
             ws.call(RTCSignal);
         } catch (error) {
             console.error('Error initializing WebRTC:', error);
@@ -215,7 +193,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     function logout() {
         if (stream.value) stream.value.getTracks().forEach(track => track.stop());
-        // if (streams.value) streams.value.forEach(stream => stream.stream.getTracks().forEach(track => track.stop()));
         if (pc.value) pc.value.close();
         call.value = null;
         stream.value = null;
@@ -229,10 +206,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     function signaling(data: RTCSignal) {
-        for (const stream of streams.value) {
-            if (stream.stream.id == data.stream_id) stream.signal = data;
-        }
-
         if (data.negotiation && data.data.type == "offer") negotiation(data);
         else if (data.data.type == "offer") incomingcall(data);
         else if (data.data.type == "answer") answer(data);
@@ -240,7 +213,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     async function incomingcall(data: RTCSignal) {
         try {
-            console.log('Incoming call:', data);
             call.value = data;
         } catch (error) {
             console.error('Error incoming call:', error);
@@ -248,7 +220,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     async function offer(signal: RTCSignal, options: { audio: boolean, video: boolean }) {
-        console.log('Received offer:', signal);
         if (!auth.user) throw new Error("No user authenticated");
         if (!conversation.conversation) {
             conversation.conversation = await conversation.one(signal.conversation);
@@ -285,7 +256,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         const answer = await pc.value.createAnswer();
         pc.value.setLocalDescription(answer);
         sendcandidates();
-        syncstreams(signal)
 
         const RTCSignal: RTCSignal = {
             stream_id: stream.value.id,
@@ -294,15 +264,16 @@ export const useWebRTCStore = defineStore('rtc', () => {
             data: answer,
             audio: audio.value,
             video: video.value,
+            screen: screen.value,
             negotiation: false,
         }
-        
+        streams.value.push({ stream: stream.value, signal: RTCSignal });
         ws.call(RTCSignal)
     }
 
     async function answer(signal: RTCSignal) {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
-        pc.value.setRemoteDescription(signal.data).then(() => syncstreams(signal));
+        pc.value.setRemoteDescription(signal.data);
         sendcandidates();
     }
 
@@ -320,10 +291,43 @@ export const useWebRTCStore = defineStore('rtc', () => {
         pc.value.ontrack = (event) => {
             const ids = streams.value.map(s => s.stream.id);
             for (const s of event.streams) {
-                if (ids.includes(s.id)) return;
+                if (ids.includes(s.id)) continue;
                 streams.value.push({ stream: s, signal: null });
             }
+
+            event.streams.forEach(s => {
+                s.onremovetrack = (event) => {
+                    streams.value = streams.value.filter(stream => stream.stream.id != s.id);
+                }
+            });
         }
+    }
+
+    // Require the missing signals
+    function requiresignal() {
+        const ids = streams.value.filter(s => s.signal == null).map(s => s.stream.id);
+        if (ids.length == 0) return;
+        if (!auth.user) throw new Error("No user authenticated");
+
+        const req: RTCSignalRequest = {
+            ids: ids,
+            user: auth.user,
+        }
+
+        ws.call(req, 'require-signal');
+    }
+
+    function signalrequested(signal: RTCSignalRequest) {
+        const signals = streams.value.filter(s => signal.ids.includes(s.stream.id)).map(s => s.signal);
+        if (!signals) return 
+        
+        for (const s of signals) {
+            if (s) ws.call(s, 'signal');
+        }
+    }
+
+    function signal(signal: RTCSignal) {
+        syncstreams(signal);
     }
 
     function syncstreams(signal: RTCSignal) {
@@ -365,7 +369,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
             if (!auth.user) throw new Error("No user authenticated");
             if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
             if (streams.value.length == 0) return; // No remote streams available 
-            // console.log('Negotiation needed');
             
             const offer = await pc.value.createOffer();
             await pc.value.setLocalDescription(offer);
@@ -377,6 +380,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 data: offer,
                 audio: audio.value,
                 video: video.value,
+                screen: screen.value,
                 negotiation: true,
             }
             ws.call(RTCSignal, 'negotiation')
@@ -403,6 +407,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
             data: answer,
             audio: audio.value,
             video: video.value,
+            screen: screen.value,
             negotiation: true,
         }
         ws.call(RTCSignal, 'negotiation')
@@ -426,7 +431,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         audio,
         video,
         screen,
-        remoteStreams,
         streams,
         init,
         logout,
@@ -435,6 +439,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         answer,
         candidate,
         negotiation,
+        signalrequested,
+        signal,
         hangout,
     }
 });
