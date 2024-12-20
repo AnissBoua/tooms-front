@@ -19,6 +19,12 @@ export const useWebRTCStore = defineStore('rtc', () => {
     
     const pc = ref<RTCPeerConnection | null>(null);
     const candidates = ref<RTCIceCandidate[]>([]);
+    const checking = ref<boolean>(false);
+
+    watch(() => checking.value, (value) => {
+        if (value) return;
+        sendcandidates();
+    });
 
     watch(() => audio.value, async (value) => {
         if (!pc.value) return;
@@ -162,11 +168,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
             pc.value = new RTCPeerConnection(configuration);
             
             pc.value.onconnectionstatechange = (event) => {
-                console.log(pc.value?.connectionState);
+                if (!pc.value) return;
+                console.log(pc.value.connectionState);
             }
 
             pc.value.oniceconnectionstatechange = (event) => {
-                console.log(pc.value?.iceConnectionState);
+                if (!pc.value) return;
+                if (pc.value.iceConnectionState == 'checking') checking.value = true;
+                console.log(pc.value.iceConnectionState);
             }
             
             tracks()
@@ -263,10 +272,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         
         const answer = await pc.value.createAnswer();
         pc.value.setLocalDescription(answer);
-        sendcandidates();
-
-        console.log('Local SDP:', pc.value.localDescription?.sdp);
-        console.log('Remote SDP:', pc.value.remoteDescription?.sdp);
+        // sendcandidates();
 
         const RTCSignal: RTCSignal = {
             stream_id: stream.value.id,
@@ -286,7 +292,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         console.log('Answer:', signal);
         pc.value.setRemoteDescription(signal.data);
-        sendcandidates();
+        // sendcandidates();
     }
 
     function tracks() {
