@@ -260,11 +260,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
         negotiate()
 
         pc.value.onconnectionstatechange = (event) => {
-            console.log(pc.value?.connectionState);
+            if (!pc.value) return;
+            console.log(pc.value.connectionState);
         }
 
         pc.value.oniceconnectionstatechange = (event) => {
-            console.log(pc.value?.iceConnectionState);
+            if (!pc.value) return;
+            if (pc.value.iceConnectionState == 'checking') checking.value = true;
+            console.log(pc.value.iceConnectionState);
         }
 
         const offer = new RTCSessionDescription(signal.data);
