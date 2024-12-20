@@ -292,7 +292,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         console.log('Answer:', signal);
         pc.value.setRemoteDescription(signal.data);
-        // sendcandidates();
+        sendcandidates();
     }
 
     function tracks() {
@@ -383,6 +383,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
             }
             ws.candidate(c)
         }
+        candidates.value = [];
     }
 
     // Sending negotiation
