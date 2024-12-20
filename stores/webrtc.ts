@@ -22,7 +22,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
     const checking = ref<boolean>(false);
 
     watch(() => checking.value, (value) => {
-        console.log('Checking:', value);
         if (!value) return;
         sendcandidates();
     });
@@ -268,7 +267,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         pc.value.oniceconnectionstatechange = (event) => {
             if (!pc.value) return;
             if (pc.value.iceConnectionState == 'checking') checking.value = true;
-            console.log(checking.value);
             console.log(pc.value.iceConnectionState);
         }
 
@@ -297,7 +295,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         console.log('Answer:', signal);
         pc.value.setRemoteDescription(signal.data);
-        sendcandidates();
+        // sendcandidates();
     }
 
     function tracks() {
@@ -376,7 +374,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     function sendcandidates() {
-        console.log('Checking candidates:', candidates.value);
         if (!auth.user) throw new Error("No user authenticated");
         if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
         console.log('Sending candidates:', candidates.value);
