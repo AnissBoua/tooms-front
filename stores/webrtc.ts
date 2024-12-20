@@ -161,11 +161,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
             pc.value = new RTCPeerConnection(configuration);
             
-            tracks()
-            remotestream()
-            icecandidates()
-            await negotiate()
-
             pc.value.onconnectionstatechange = (event) => {
                 console.log(pc.value?.connectionState);
             }
@@ -173,6 +168,11 @@ export const useWebRTCStore = defineStore('rtc', () => {
             pc.value.oniceconnectionstatechange = (event) => {
                 console.log(pc.value?.iceConnectionState);
             }
+            
+            tracks()
+            remotestream()
+            icecandidates()
+            await negotiate()
             
             const offer = await pc.value.createOffer();
             await pc.value.setLocalDescription(offer);
