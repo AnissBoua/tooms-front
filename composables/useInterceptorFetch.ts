@@ -1,6 +1,7 @@
 export const useInterceptorFetch = async <T = object>( url: string, options?: Record<string, any>): Promise<T> => {
   const auth = useAuthStore();
   const config = useRuntimeConfig();
+  let errors = 0;
 
   try {
     const response = await $fetch<T>(config.public.API_URL + url, {
@@ -11,6 +12,7 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
       },
       async onResponseError({ request, response, options }) {
         if (response?.status === 401) {
+          errors++;
           await auth.refresh();
         } else {
           console.error("Response error:", response?.status);
@@ -22,7 +24,11 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
   } catch (error) {
     try {
       // Try the request again
-      return await useInterceptorFetch<T>(url, options);
+      if (errors > 2) {
+        throw new Error("Failed to refresh token");
+      } else {
+        return await useInterceptorFetch<T>(url, options);
+      }
     } catch (error) {
       console.log("Url:", url);
       console.error("Fetch error:", error);
