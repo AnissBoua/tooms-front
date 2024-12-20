@@ -169,6 +169,10 @@ export const useWebRTCStore = defineStore('rtc', () => {
             pc.value.onconnectionstatechange = (event) => {
                 console.log(pc.value?.connectionState);
             }
+
+            pc.value.oniceconnectionstatechange = (event) => {
+                console.log(pc.value?.iceConnectionState);
+            }
             
             const offer = await pc.value.createOffer();
             await pc.value.setLocalDescription(offer);
@@ -250,12 +254,19 @@ export const useWebRTCStore = defineStore('rtc', () => {
             console.log(pc.value?.connectionState);
         }
 
+        pc.value.oniceconnectionstatechange = (event) => {
+            console.log(pc.value?.iceConnectionState);
+        }
+
         const offer = new RTCSessionDescription(signal.data);
         pc.value.setRemoteDescription(offer)
         
         const answer = await pc.value.createAnswer();
         pc.value.setLocalDescription(answer);
         sendcandidates();
+
+        console.log('Local SDP:', pc.value.localDescription?.sdp);
+        console.log('Remote SDP:', pc.value.remoteDescription?.sdp);
 
         const RTCSignal: RTCSignal = {
             stream_id: stream.value.id,
@@ -346,6 +357,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         pc.value.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
             if (event.candidate) {
+                console.log('[ICE Candidate]', event.candidate);
                 candidates.value.push(event.candidate)
             }
         }
