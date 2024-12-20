@@ -1,7 +1,8 @@
+let ERRORS_COUNT = 0;
+
 export const useInterceptorFetch = async <T = object>( url: string, options?: Record<string, any>): Promise<T> => {
   const auth = useAuthStore();
   const config = useRuntimeConfig();
-  let errors = 0;
 
   try {
     const response = await $fetch<T>(config.public.API_URL + url, {
@@ -11,9 +12,10 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
         Authorization: `Bearer ${auth.token}`,
       },
       async onResponseError({ request, response, options }) {
+        ERRORS_COUNT++;
         if (response?.status === 401) {
-          errors++;
           await auth.refresh();
+          ERRORS_COUNT = 0;
         } else {
           console.error("Response error:", response?.status);
         }
@@ -24,7 +26,7 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
   } catch (error) {
     try {
       // Try the request again
-      if (errors > 2) {
+      if (ERRORS_COUNT > 1) {
         throw new Error("Failed to refresh token");
       } else {
         return await useInterceptorFetch<T>(url, options);
