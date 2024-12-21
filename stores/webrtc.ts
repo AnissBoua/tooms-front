@@ -377,7 +377,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 screen: screen.value,
                 negotiation: false,
             };
-            streams.value.push({ stream: stream.value, signal: RTCSignal });
             ws.call(RTCSignal);
         }
     }
