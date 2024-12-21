@@ -58,6 +58,10 @@ export const useWebSocketStore = defineStore('ws', () => {
             rtc.signaling(signal);
         });
 
+        socket.value.on("multi-call", (users: number[]) => {
+            rtc.secondarycalls(users);
+        });
+
         socket.value.on("trigger-candidates", (signal: RTCSignal) => {
             rtc.sendcandidates(signal);
         })
