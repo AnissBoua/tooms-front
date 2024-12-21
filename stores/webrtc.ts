@@ -347,10 +347,16 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!conversation.conversation) throw new Error("No conversation selected");
         if (!stream.value) throw new Error("No stream available");
 
+        console.log('Secondary calls:', users);
+        console.log('Peers:', peers.value);
+        console.log('User:', auth.user);
+        
+        
+        
         for (const u of users) {
             if (u == auth.user.id) continue;
             if (peers.value.find(p => p.user.id == u)) continue;
-            
+
             const user = conversation.conversation.participants.find(p => p.id == u);
             if (!user) throw new Error("User not found");
 
