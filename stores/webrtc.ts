@@ -294,7 +294,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
     async function answer(signal: RTCSignal) {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         console.log('Answer:', signal);
-        pc.value.setRemoteDescription(signal.data);
+        
+        // If it's stable, it's a new answer from a multiple streams call
+        if (pc.value.signalingState != 'stable') pc.value.setRemoteDescription(signal.data);
         sendcandidates();
     }
 
