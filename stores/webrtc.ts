@@ -151,7 +151,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 stream.value.getVideoTracks().forEach(track => track.enabled = false);
                 video.value = false;
 
-                // Create dummy video track
+                // Create dummy video track, otherwise the call will think there's no video
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 if (!context) throw new Error('Canvas context not available');
