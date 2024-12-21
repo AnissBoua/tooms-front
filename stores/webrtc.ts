@@ -418,8 +418,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
             if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
             if (!auth.user) throw new Error("No user authenticated");
             if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
-            if (streams.value.length == 0) return; // No remote streams available 
-            
+            if (peer.connectionState != 'connected') return;
+
             const offer = await peer.createOffer();
             await peer.setLocalDescription(offer);
     
