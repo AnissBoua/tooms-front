@@ -105,6 +105,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 const RTCSignal: RTCSignal = { 
                     stream_id: screenStream.id, 
                     user: auth.user, 
+                    toID: peer.user.id,
                     conversation: conversation.conversation.id, 
                     data: signal?.signal?.data,
                     audio: false, 
@@ -152,6 +153,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 const RTCSignal: RTCSignal = { 
                     stream_id: stream.value.id,
                     user: auth.user,
+                    toID: user.id,
                     conversation: conversation.conversation.id, 
                     data: offer, // TODO
                     audio: audio.value,
@@ -220,7 +222,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         tracks(peer)
         remotestream(peer)
         icecandidates(RTCPeer)
-        negotiate(peer)
+        negotiate(RTCPeer)
 
 
         peers.value.push(RTCPeer);
@@ -264,9 +266,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         await createstream(options);
         if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
 
-        console.log('Participants:', conversation.conversation.participants);
         for (const user of conversation.conversation.participants) {
-            if (user.id == auth.user.id) continue;
+            if (user.id != signal.user.id) continue;
             const peer = createpeer(user);
 
             const offer = new RTCSessionDescription(signal.data);
@@ -278,6 +279,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
             const RTCSignal: RTCSignal = {
                 stream_id: stream.value.id,
                 user: auth.user,
+                toID: user.id,
                 conversation: signal.conversation,
                 data: answer,
                 audio: audio.value,
@@ -413,19 +415,20 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     //#region Negotiation
     // Sending negotiation
-    async function negotiate(peer: RTCPeerConnection) {
-        peer.onnegotiationneeded = async () => {
+    async function negotiate(peer: RTCPeer) {
+        peer.peer.onnegotiationneeded = async () => {
             if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
             if (!auth.user) throw new Error("No user authenticated");
             if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
-            if (peer.connectionState != 'connected') return;
+            if (peer.peer.connectionState != 'connected') return;
 
-            const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
+            const offer = await peer.peer.createOffer();
+            await peer.peer.setLocalDescription(offer);
     
             const RTCSignal: RTCSignal = {
                 stream_id: stream.value.id,
                 user: auth.user,
+                toID: peer.user.id,
                 conversation: conversation.conversation.id,
                 data: offer,
                 audio: audio.value,
@@ -458,6 +461,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         const RTCSignal: RTCSignal = {
             stream_id: stream.value.id,
             user: auth.user,
+            toID: signal.user.id,
             conversation: signal.conversation,
             data: answer,
             audio: audio.value,
