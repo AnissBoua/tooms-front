@@ -310,9 +310,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
     function remotestream() {
         if (!pc.value) throw new Error("WebRTC it's not initialized"); // This should never happen, just to satisfy TS
         pc.value.ontrack = (event) => {
-            console.log('Track received:', event.track);
-            console.log('Stream:', event.streams);
-            
             const ids = streams.value.map(s => s.stream.id);
             for (const s of event.streams) {
                 if (ids.includes(s.id)) continue;
@@ -332,10 +329,12 @@ export const useWebRTCStore = defineStore('rtc', () => {
         const ids = streams.value.filter(s => s.signal == null).map(s => s.stream.id);
         if (ids.length == 0) return;
         if (!auth.user) throw new Error("No user authenticated");
+        if (!conversation.conversation) throw new Error("No conversation selected");
 
         const req: RTCSignalRequest = {
             ids: ids,
             user: auth.user,
+            conversation: conversation.conversation.id,
         }
 
         ws.call(req, 'require-signal');
