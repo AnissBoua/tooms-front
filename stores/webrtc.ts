@@ -387,7 +387,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
             }
             ws.candidate(c)
         }
-        candidates.value = [];
     }
 
     // Sending negotiation
