@@ -21,9 +21,3 @@ watch(() => auth.token, (token) => {
   ws.init();
 });
 </script>
-
-<style>
-body {
-    font-family: 'Poppins', sans-serif;
-}
-</style>

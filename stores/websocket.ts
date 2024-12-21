@@ -5,13 +5,13 @@ import type { WSMsg } from "~/types/WSmsg";
 import type { Message } from "~/types/message";
 import type { RTCSignal } from '~/types/WebRTC/RTCSignal';
 import type { RTCCandidate } from '~/types/WebRTC/RTCCandidate';
+import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
 
 export const useWebSocketStore = defineStore('ws', () => {
     const socket = ref<Socket | null>(null);
     const auth = useAuthStore();
     const conversation = useConversationStore();
     const rtc = useWebRTCStore();
-    // disconnected, connected, authenticated
     const status = ref<'disconnected' | 'connected' | 'authenticated'>('disconnected');
 
     async function init() {
@@ -32,6 +32,8 @@ export const useWebSocketStore = defineStore('ws', () => {
 
         socket.value.on("disconnect", () => {
             console.log("Disconnected from WebSocket server");
+            status.value = 'disconnected';
+            socket.value = null;
         });
 
         socket.value.on("error", (error: any) => {
@@ -59,6 +61,18 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.on("candidate", (candidate: RTCCandidate) => {
             rtc.candidate(candidate);
         })
+
+        socket.value.on("negotiation", (signal: RTCSignal) => {
+            rtc.signaling(signal);
+        })
+
+        socket.value.on("require-signal", (signal: RTCSignalRequest) => {
+            rtc.signalrequested(signal);
+        })
+
+        socket.value.on("signal", (signal: RTCSignal) => {
+            rtc.signal(signal);
+        })
     }
 
     function logout() {
@@ -69,9 +83,9 @@ export const useWebSocketStore = defineStore('ws', () => {
     }
 
     function send(data: any) {
-        if (!socket.value) throw new Error("Socket not initialized"); 
-        if (!auth.user) throw new Error("User not authenticated");
-        if (!conversation.conversation) throw new Error("No conversation selected");
+        if (!socket.value) return;
+        if (!auth.user) return;
+        if (!conversation.conversation) return;
 
         const msg: WSMsg = {
             conversation: conversation.conversation.id,
@@ -81,9 +95,9 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.emit("message", msg);
     }
 
-    function call(offer: RTCSignal) {
+    function call(offer: RTCSignal | RTCSignalRequest, event: string = 'call') {
         if (!socket.value) throw new Error("Socket not initialized");
-        socket.value.emit('call', offer)
+        socket.value.emit(event, offer)
     }
 
     function candidate(data: RTCCandidate) {

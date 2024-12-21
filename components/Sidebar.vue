@@ -4,7 +4,7 @@
             <div class="flex items-center justify-between">
                 <p>Conversation</p>
                 <Icon name="hugeicons:message-add-01" class="text-2xl hover:text-violet-600 cursor-pointer" @click="searching = true" />
-                <div v-if="searching" class="fixed inset-0 bg-black/50">
+                <div v-if="searching" class="fixed z-10 inset-0 bg-black/50">
                     <CreateConversation />
                 </div>
             </div>

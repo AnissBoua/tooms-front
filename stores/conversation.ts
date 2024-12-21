@@ -25,6 +25,20 @@ export const useConversationStore = defineStore('conversation', () => {
         }
     }
 
+    async function one(id: number) {
+        try {
+            const data = await useInterceptorFetch<Conversation>('/api/conversations/' + id);
+            data.page = 1;
+            
+            return data;
+        } catch (error) {
+            console.error('CONVERSATION::STORE::ONE');
+            console.error(error);
+        }
+
+        return null;
+    }
+
     async function messages(page: number) {
         if (!conversation.value) return;
         try {
@@ -81,6 +95,7 @@ export const useConversationStore = defineStore('conversation', () => {
         conversation,
         logout,
         get,
+        one,
         messages,
         search,
         create,
