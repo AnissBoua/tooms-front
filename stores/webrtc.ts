@@ -420,6 +420,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
     // Require the missing signals
     function requiresignal() {
         console.log("Stream:", streams.value);
+        signaltrigger.value = false;
         
         const ids = streams.value.filter(s => s.signal == null).map(s => s.stream.id);
         if (ids.length == 0) return;
@@ -433,7 +434,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
 
         ws.call(req, 'require-signal');
-        signaltrigger.value = false;
     }
 
     function signalrequested(signal: RTCSignalRequest) {
