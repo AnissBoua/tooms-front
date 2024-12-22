@@ -353,6 +353,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
         sendcandidates(data);
         if (!signal.negotiation) triggercandidates(signal.user.id);
+
+        signaltrigger.value = true;
     }
 
     async function secondarycalls(users: number[]) {
