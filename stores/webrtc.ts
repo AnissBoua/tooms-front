@@ -296,6 +296,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
         for (const user of conversation.conversation.participants) {
             if (user.id != signal.user.id) continue;
+            if (peers.value.find(p => p.user.id == user.id)) continue;
+            
             const peer = createpeer(user);
 
             const offer = new RTCSessionDescription(signal.data);
