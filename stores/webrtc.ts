@@ -331,7 +331,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
             ws.call(RTCSignal)
         }
 
-        signaltrigger.value = true;
+        // signaltrigger.value = true;
     }
 
     async function answer(signal: RTCSignal) {
@@ -355,7 +355,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         sendcandidates(data);
         if (!signal.negotiation) triggercandidates(signal.user.id);
 
-        signaltrigger.value = true;
+        // signaltrigger.value = true;
     }
 
     async function secondarycalls(users: number[]) {
