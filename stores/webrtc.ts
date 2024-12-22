@@ -285,7 +285,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
         if (!conversation.conversation) throw new Error("No conversation selected"); // This should never happen, just to satisfy TS
 
-        await createstream(options);
+        // If there is no stream, create one
+        if (!stream.value) await createstream(options);
+        // If there is still no stream, throw an error
         if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
 
         for (const user of conversation.conversation.participants) {
