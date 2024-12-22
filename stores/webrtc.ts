@@ -552,8 +552,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         peer.peer.setLocalDescription(answer);
         
         const data: RTCBase = {
-            user: auth.user.id,
-            receiver: signal.user.id,
+            user: signal.user.id,
+            receiver: auth.user.id,
             conversation: signal.conversation,
         }
         sendcandidates(data);
