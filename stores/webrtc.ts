@@ -140,11 +140,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     });
 
-    watch(() => oncall.value, (value) => {
-        if (!value) return;
-        if (signaltrigger.value) requiresignal();
-    });
-
     watch(() => signaltrigger.value, (value) => {
         if (!value) return;
         if (oncall.value) requiresignal();
@@ -576,6 +571,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
             negotiation: true,
         }
         ws.call(RTCSignal, 'negotiation')
+        signaltrigger.value = true;
     }
     //#endregion End Negotiation
 
