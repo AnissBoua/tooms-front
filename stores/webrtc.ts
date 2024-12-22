@@ -116,7 +116,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     screen: true,
                     negotiation: false,
                 };
-                streams.value.push({ stream: screenStream, signal: RTCSignal });
+                addstream(screenStream, RTCSignal);
             } else {
                 const screenStream = streams.value.find(s => s.signal?.screen);
                 if (!screenStream) return;
@@ -165,7 +165,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     screen: screen.value,
                     negotiation: false,
                 };
-                streams.value.push({ stream: stream.value, signal: RTCSignal });
+                addstream(stream.value, RTCSignal);
                 ws.call(RTCSignal);
             }
         } catch (error) {
@@ -211,6 +211,13 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     }
 
+    function addstream(stream: MediaStream, signal: RTCSignal | null) {
+        const exists = streams.value.find(s => s.stream.id == stream.id);
+        if (exists) return;
+
+        streams.value.push({ stream: stream, signal: signal });
+    }
+
     function createpeer(user: User): RTCPeerConnection {
         const peer = new RTCPeerConnection(configuration);
             
@@ -253,13 +260,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         return peer;
     }
 
-    function addstream(stream: MediaStream, signal: RTCSignal) {
-        const exists = streams.value.find(s => s.stream.id == stream.id);
-        if (exists) return;
-
-        streams.value.push({ stream: stream, signal: signal });
-    }
-
     function logout() {
         if (stream.value) stream.value.getTracks().forEach(track => track.stop());
         if (peers.value.length) {
@@ -280,9 +280,12 @@ export const useWebRTCStore = defineStore('rtc', () => {
         else if (data.data.type == "answer") answer(data);
     }
 
-    async function incomingcall(data: RTCSignal) {
+    async function incomingcall(signal: RTCSignal) {
         try {
-            call.value = data;
+            call.value = signal;
+            if (!conversation.conversation) {
+                conversation.conversation = await conversation.one(signal.conversation);
+            }
         } catch (error) {
             console.error('Error incoming call:', error);
         }
@@ -290,9 +293,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     async function offer(signal: RTCSignal, options: { audio: boolean, video: boolean }) {
         if (!auth.user) throw new Error("No user authenticated");
-        if (!conversation.conversation) {
-            conversation.conversation = await conversation.one(signal.conversation);
-        }
         if (!conversation.conversation) throw new Error("No conversation selected"); // This should never happen, just to satisfy TS
 
         await createstream(options);
@@ -401,7 +401,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
             const ids = streams.value.map(s => s.stream.id);
             for (const s of event.streams) {
                 if (ids.includes(s.id)) continue;
-                streams.value.push({ stream: s, signal: null });
+                addstream(s, null);
             }
 
             event.streams.forEach(s => {
