@@ -143,11 +143,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (oncall.value) requiresignal();
     });
 
-    watch(() => streams.value, (value) => {
-        if (value.length == 0) return;
-        signaltrigger.value = true;
-    }, { deep: true });
-
     async function init(options = { audio: true, video: true }) {
         try {
             if (!conversation.conversation) throw new Error('No conversation selected'); // This should never happen
@@ -334,6 +329,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
             addstream(stream.value, RTCSignal);
             ws.call(RTCSignal)
         }
+
+        signaltrigger.value = true;
     }
 
     async function answer(signal: RTCSignal) {
