@@ -7,6 +7,7 @@ import type { RTCSignal } from '~/types/WebRTC/RTCSignal';
 import type { RTCCandidate } from '~/types/WebRTC/RTCCandidate';
 import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
 import type { RTCConnected } from '~/types/WebRTC/RTCConnected';
+import type { RTCBase } from '~/types/WebRTC/RTCBase';
 
 export const useWebSocketStore = defineStore('ws', () => {
     const socket = ref<Socket | null>(null);
@@ -63,8 +64,8 @@ export const useWebSocketStore = defineStore('ws', () => {
             rtc.secondarycalls(users);
         });
 
-        socket.value.on("trigger-candidates", (signal: RTCSignal) => {
-            rtc.sendcandidates(signal);
+        socket.value.on("trigger-candidates", (data: RTCBase) => {
+            rtc.sendcandidates(data);
         })
 
         socket.value.on("candidate", (candidate: RTCCandidate) => {
@@ -108,7 +109,7 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.emit("message", msg);
     }
 
-    function call(offer: RTCSignal | RTCSignalRequest | RTCConnected, event: string = 'call') {
+    function call(offer: RTCSignal | RTCSignalRequest | RTCConnected | RTCBase, event: string = 'call') {
         if (!socket.value) throw new Error("Socket not initialized");
         socket.value.emit(event, offer)
     }

@@ -6,6 +6,7 @@ import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
 import type { RTCPeer } from '~/types/WebRTC/RTCPeer';
 import type { User } from '~/types/user';
 import type { RTCConnected } from '~/types/WebRTC/RTCConnected';
+import type { RTCBase } from '~/types/WebRTC/RTCBase';
 
 export const useWebRTCStore = defineStore('rtc', () => {
     const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]};
@@ -341,12 +342,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
         console.log("Streams: ", streams.value);
         
-        sendcandidates(signal);
-
         if (!auth.user) throw new Error("No user authenticated");
-
-        signal.user = auth.user;
-        if (!signal.negotiation) ws.call(signal, 'trigger-candidates');
+        const data: RTCBase = {
+            user: signal.user.id,
+            receiver: auth.user.id,
+            conversation: signal.conversation,
+        }
+        sendcandidates(data);
+        if (!signal.negotiation) triggercandidates(signal.user.id);
     }
 
     async function secondarycalls(users: number[]) {
@@ -460,9 +463,23 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     }
 
+    function triggercandidates(receiver: number) {
+        if (!auth.user) throw new Error("No user authenticated");
+        if (!conversation.conversation) throw new Error("No conversation selected");
+
+        const data: RTCBase = {
+            user: auth.user.id,
+            receiver: receiver,
+            conversation: conversation.conversation.id,
+        }
+        ws.call(data, 'trigger-candidates');
+    }
+
     // Send all candidates
-    function sendcandidates(signal: RTCSignal) {
-        const peer = peers.value.find(p => p.user.id == signal.user.id);
+    function sendcandidates(data: RTCBase) {
+        console.log('Sending candidates:', data);
+        
+        const peer = peers.value.find(p => p.user.id == data.user);
         if (!peer) throw new Error("Peer not found");
         if (!auth.user) throw new Error("No user authenticated");
         if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
@@ -471,7 +488,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         for (const candidate of peer.candidates) {
             const c: RTCCandidate = {
                 user: auth.user.id,
-                receiver: signal.user.id,
+                receiver: data.user,
                 conversation: conversation.conversation.id,
                 candidate: candidate
             }
@@ -533,7 +550,13 @@ export const useWebRTCStore = defineStore('rtc', () => {
         
         const answer = await peer.peer.createAnswer();
         peer.peer.setLocalDescription(answer);
-        sendcandidates(signal);
+        
+        const data: RTCBase = {
+            user: auth.user.id,
+            receiver: signal.user.id,
+            conversation: signal.conversation,
+        }
+        sendcandidates(data);
 
         const RTCSignal: RTCSignal = {
             stream_id: stream.value.id,
