@@ -6,6 +6,7 @@ import type { Message } from "~/types/message";
 import type { RTCSignal } from '~/types/WebRTC/RTCSignal';
 import type { RTCCandidate } from '~/types/WebRTC/RTCCandidate';
 import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
+import type { RTCConnected } from '~/types/WebRTC/RTCConnected';
 
 export const useWebSocketStore = defineStore('ws', () => {
     const socket = ref<Socket | null>(null);
@@ -81,6 +82,10 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.on("signal", (signal: RTCSignal) => {
             rtc.signal(signal);
         })
+
+        socket.value.on("connected", (users: number[]) => {
+            rtc.secondarycalls(users);
+        })
     }
 
     function logout() {
@@ -103,7 +108,7 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.emit("message", msg);
     }
 
-    function call(offer: RTCSignal | RTCSignalRequest, event: string = 'call') {
+    function call(offer: RTCSignal | RTCSignalRequest | RTCConnected, event: string = 'call') {
         if (!socket.value) throw new Error("Socket not initialized");
         socket.value.emit(event, offer)
     }

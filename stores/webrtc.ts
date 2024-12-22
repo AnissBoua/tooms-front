@@ -5,6 +5,7 @@ import type { RTCStream } from '~/types/WebRTC/RTCStream';
 import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
 import type { RTCPeer } from '~/types/WebRTC/RTCPeer';
 import type { User } from '~/types/user';
+import type { RTCConnected } from '~/types/WebRTC/RTCConnected';
 
 export const useWebRTCStore = defineStore('rtc', () => {
     const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]};
@@ -219,23 +220,16 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 if (!conversation.conversation) return;
                 if (!auth.user) return;
                 if (!stream.value) return;
+                if (conversation.conversation.participants.length <= 2) return;
 
-                if (conversation.conversation.participants.length > 2 && (conversation.conversation.participants.length - 1) != peers.value.length) {
-                    const tmp = streams.value.find(s => s.stream.id == stream.value?.id);
-                    const signal: RTCSignal = {
-                        stream_id: stream.value.id,
-                        user: auth.user,
-                        conversation: conversation.conversation.id,
-                        actives: [],
-                        toID: user.id,
-                        data: tmp?.signal?.data,
-                        audio: audio.value,
-                        video: video.value,
-                        screen: screen.value,
-                        negotiation: false,
-                    }
-                    ws.call(signal, 'multi-call');
+                console.log('Connected:', peers.value);
+                
+                const RTCConnected: RTCConnected = {
+                    user: auth.user.id,
+                    conversation: conversation.conversation.id,
+                    peers: peers.value.map(p => p.user.id),
                 }
+                ws.call(RTCConnected, 'connected');
             }
         }
 
@@ -296,8 +290,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
         for (const user of conversation.conversation.participants) {
             if (user.id != signal.user.id) continue;
-            if (peers.value.find(p => p.user.id == user.id)) continue;
-            
+            // If the peer already exists, ignore the offer
+            if (peers.value.find(p => p.user.id == user.id)) continue; // TODO: Sometimes create a bug
+
             const peer = createpeer(user);
 
             const offer = new RTCSessionDescription(signal.data);
