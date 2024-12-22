@@ -243,6 +243,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     peers: peers.value.map(p => p.user.id),
                 }
                 ws.call(RTCConnected, 'connected');
+                signaltrigger.value = true;
             }
         }
 
@@ -388,8 +389,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
             };
             ws.call(RTCSignal);
         }
-
-        signaltrigger.value = true;
     }
 
     function tracks(peer: RTCPeerConnection) {
