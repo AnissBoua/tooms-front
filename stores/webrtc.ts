@@ -419,6 +419,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     // Require the missing signals
     function requiresignal() {
+        console.log("Stream:", streams.value);
+        
         const ids = streams.value.filter(s => s.signal == null).map(s => s.stream.id);
         if (ids.length == 0) return;
         if (!auth.user) throw new Error("No user authenticated");
