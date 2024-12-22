@@ -68,7 +68,7 @@ export const useWebSocketStore = defineStore('ws', () => {
             rtc.sendcandidates(data);
         })
 
-        socket.value.on("candidate", (candidate: RTCCandidate) => {
+        socket.value.on("candidates", (candidate: RTCCandidate) => {
             rtc.candidate(candidate);
         })
 
@@ -109,14 +109,9 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.emit("message", msg);
     }
 
-    function call(offer: RTCSignal | RTCSignalRequest | RTCConnected | RTCBase, event: string = 'call') {
+    function call(offer: RTCSignal | RTCCandidate | RTCSignalRequest | RTCConnected | RTCBase, event: string = 'call') {
         if (!socket.value) throw new Error("Socket not initialized");
         socket.value.emit(event, offer)
-    }
-
-    function candidate(data: RTCCandidate) {
-        if (!socket.value) throw new Error("Socket not initialized");
-        socket.value.emit('candidate', data);
     }
 
     return {
@@ -126,6 +121,5 @@ export const useWebSocketStore = defineStore('ws', () => {
         logout,
         send,
         call,
-        candidate,
     }
 });

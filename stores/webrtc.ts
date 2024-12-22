@@ -485,24 +485,24 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
         
         console.log('Sending candidates:', peer.candidates);
-        for (const candidate of peer.candidates) {
-            const c: RTCCandidate = {
-                user: auth.user.id,
-                receiver: data.user,
-                conversation: conversation.conversation.id,
-                candidate: candidate
-            }
-            ws.candidate(c)
+        const RTCCandidate: RTCCandidate = {
+            user: auth.user.id,
+            receiver: data.user,
+            conversation: conversation.conversation.id,
+            candidates: [...peer.candidates],
         }
+        ws.call(RTCCandidate, 'candidates');
 
         peer.candidates = [];
     }
 
     // Receiving Socket candidates
-    async function candidate(candidate: RTCCandidate) {
-        const peer = peers.value.find(p => p.user.id == candidate.user);
+    async function candidate(data: RTCCandidate) {
+        const peer = peers.value.find(p => p.user.id == data.user);
         if (!peer) throw new Error("Peer not found");
-        await peer.peer.addIceCandidate(candidate.candidate);
+        for (const candidate of data.candidates){
+            await peer.peer.addIceCandidate(candidate);
+        }
     }
     //#endregion End ICE Candidates
 
