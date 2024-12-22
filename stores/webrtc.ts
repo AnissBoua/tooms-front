@@ -534,6 +534,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     // Receiving negotiation
     async function negotiation(signal: RTCSignal) {
+        console.log('Negotiation:', signal);
+        
         if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
         if (!auth.user) throw new Error("No user authenticated");
         const peer = peers.value.find(p => p.user.id == signal.user.id);
