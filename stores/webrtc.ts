@@ -28,25 +28,27 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!stream.value) return;
 
 
-        for (const peer of peers.value) {
-            if (!value) { // Remove audio track from the peer connection
-                const tracks = stream.value.getAudioTracks();
-                tracks.forEach(track => track.stop());
-    
+        if (!value) {
+            const tracks = stream.value.getAudioTracks();
+            tracks.forEach(track => track.stop());
+
+            for (const peer of peers.value) {
                 for (const sender of peer.peer.getSenders()) {
                     if (sender.track?.kind === 'audio') peer.peer.removeTrack(sender);
                 }
-    
-                for (const track of tracks) {
-                    stream.value.removeTrack(track);
-                }
-            } else { // Add audio track to the peer connection
-                const tmp = await devices({ audio: true, video: false });
-                if (!tmp) return;
-    
-                const track = tmp.getAudioTracks()[0];
-                stream.value.addTrack(track);
-    
+            }
+
+            for (const track of tracks) {
+                stream.value.removeTrack(track);
+            }
+        } else {
+            const tmp = await devices({ audio: true, video: false });
+            if (!tmp) return;
+
+            const track = tmp.getAudioTracks()[0];
+            stream.value.addTrack(track);
+
+            for (const peer of peers.value) {
                 const sender = peer.peer.getSenders().find(sender => sender.track?.kind === 'audio');
                 if (sender) sender.replaceTrack(track);
                 else peer.peer.addTrack(track, stream.value);
@@ -95,17 +97,18 @@ export const useWebRTCStore = defineStore('rtc', () => {
     watch(() => screen.value, async (value) => {
         if (!stream.value) return;
 
-        for (const peer of peers.value) {
-            if (value) {
-                if (!auth.user) return;
-                if (!conversation.conversation) return;
-                
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                if (!screenStream) return;
-    
-                const video = screenStream.getVideoTracks()[0];
+
+        if (value) {
+            if (!auth.user) return;
+            if (!conversation.conversation) return;
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            if (!screenStream) return;
+            
+            const video = screenStream.getVideoTracks()[0];
+            
+            for (const peer of peers.value) {
                 peer.peer.addTrack(video, screenStream);
-    
+            
                 const signal = streams.value.find(s => s.stream.id == stream.value?.id);
                 const RTCSignal: RTCSignal = { 
                     stream_id: screenStream.id, 
@@ -120,18 +123,20 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     negotiation: false,
                 };
                 addstream(screenStream, RTCSignal);
-            } else {
-                const screenStream = streams.value.find(s => s.signal?.screen);
-                if (!screenStream) return;
-    
-                const video = screenStream.stream.getVideoTracks()[0];
-                const sender = peer.peer.getSenders().find(sender => sender.track?.id == video.id);
-                
-                if (sender) peer.peer.removeTrack(sender);
-    
-                screenStream.stream.getTracks().forEach(track => track.stop());
-                streams.value = streams.value.filter(s => s.stream.id != screenStream.stream.id);
             }
+        } else {
+            const screenStream = streams.value.find(s => s.signal?.screen);
+            if (!screenStream) return;
+    
+            const video = screenStream.stream.getVideoTracks()[0];
+
+            for (const peer of peers.value) {
+                const sender = peer.peer.getSenders().find(sender => sender.track?.id == video.id);
+                if (sender) peer.peer.removeTrack(sender);
+            }
+
+            screenStream.stream.getTracks().forEach(track => track.stop());
+            streams.value = streams.value.filter(s => s.stream.id != screenStream.stream.id);
         }
     });
 
