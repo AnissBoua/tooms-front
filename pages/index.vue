@@ -34,7 +34,7 @@
                     <div @click="toggleaudio" class="flex items-center justify-center bg-neutral-700 rounded-full cursor-pointer text-neutral-300 hover:bg-neutral-600 hover:text-neutral-200 p-3" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': rtc.audio }">
                         <Icon name="solar:microphone-3-linear" class="text-2xl" />
                     </div>
-                    <div @click="togglescreenshare" class="flex items-center justify-center bg-neutral-700 rounded-full cursor-pointer text-neutral-300 hover:bg-neutral-600 hover:text-neutral-200 p-3" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': rtc.screen }">
+                    <div v-if="!$device.isMobileOrTablet" @click="togglescreenshare" class="flex items-center justify-center bg-neutral-700 rounded-full cursor-pointer text-neutral-300 hover:bg-neutral-600 hover:text-neutral-200 p-3" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': rtc.screen }">
                         <Icon name="ph:monitor-arrow-up" class="text-2xl" />
                     </div>
                     <div @click="hangout" class="flex items-center justify-center bg-red-700 rounded-full cursor-pointer text-neutral-300 hover:bg-red-600 hover:text-neutral-200 p-3">

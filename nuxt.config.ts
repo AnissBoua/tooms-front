@@ -2,7 +2,13 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', '@nuxt/fonts', '@nuxt/icon', '@pinia/nuxt'],
+  modules: [
+    '@nuxt/ui',
+    '@nuxt/fonts',
+    '@nuxt/icon',
+    '@pinia/nuxt',
+    '@nuxtjs/device',
+  ],
   runtimeConfig: {
     public: {
       API_URL: process.env.API_URL || 'http://localhost:7000',
