@@ -464,6 +464,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         for (const candidate of peer.candidates) {
             const c: RTCCandidate = {
                 user: auth.user.id,
+                receiver: signal.user.id,
                 conversation: conversation.conversation.id,
                 candidate: candidate
             }
