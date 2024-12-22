@@ -6,6 +6,8 @@ import type { Message } from "~/types/message";
 import type { RTCSignal } from '~/types/WebRTC/RTCSignal';
 import type { RTCCandidate } from '~/types/WebRTC/RTCCandidate';
 import type { RTCSignalRequest } from '~/types/WebRTC/RTCSignalRequest';
+import type { RTCConnected } from '~/types/WebRTC/RTCConnected';
+import type { RTCBase } from '~/types/WebRTC/RTCBase';
 
 export const useWebSocketStore = defineStore('ws', () => {
     const socket = ref<Socket | null>(null);
@@ -58,7 +60,15 @@ export const useWebSocketStore = defineStore('ws', () => {
             rtc.signaling(signal);
         });
 
-        socket.value.on("candidate", (candidate: RTCCandidate) => {
+        socket.value.on("multi-call", (users: number[]) => {
+            rtc.secondarycalls(users);
+        });
+
+        socket.value.on("trigger-candidates", (data: RTCBase) => {
+            rtc.sendcandidates(data);
+        })
+
+        socket.value.on("candidates", (candidate: RTCCandidate) => {
             rtc.candidate(candidate);
         })
 
@@ -72,6 +82,10 @@ export const useWebSocketStore = defineStore('ws', () => {
 
         socket.value.on("signal", (signal: RTCSignal) => {
             rtc.signal(signal);
+        })
+
+        socket.value.on("connected", (users: number[]) => {
+            rtc.secondarycalls(users);
         })
     }
 
@@ -95,14 +109,9 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.emit("message", msg);
     }
 
-    function call(offer: RTCSignal | RTCSignalRequest, event: string = 'call') {
+    function call(offer: RTCSignal | RTCCandidate | RTCSignalRequest | RTCConnected | RTCBase, event: string = 'call') {
         if (!socket.value) throw new Error("Socket not initialized");
         socket.value.emit(event, offer)
-    }
-
-    function candidate(data: RTCCandidate) {
-        if (!socket.value) throw new Error("Socket not initialized");
-        socket.value.emit('candidate', data);
     }
 
     return {
@@ -112,6 +121,5 @@ export const useWebSocketStore = defineStore('ws', () => {
         logout,
         send,
         call,
-        candidate,
     }
 });
