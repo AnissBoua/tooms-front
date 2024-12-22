@@ -178,6 +178,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     async function createstream(options: { audio: boolean, video: boolean }, init: boolean = false) {
+        // If there is already a stream, return
+        if (stream.value) return;
+
         // Always allow audio, otherwise the call will fail
         stream.value = await devices({ audio: true, video: options.video });
         if (!stream.value) throw new Error('No stream available');
@@ -250,6 +253,13 @@ export const useWebRTCStore = defineStore('rtc', () => {
         return peer;
     }
 
+    function addstream(stream: MediaStream, signal: RTCSignal) {
+        const exists = streams.value.find(s => s.stream.id == stream.id);
+        if (exists) return;
+
+        streams.value.push({ stream: stream, signal: signal });
+    }
+
     function logout() {
         if (stream.value) stream.value.getTracks().forEach(track => track.stop());
         if (peers.value.length) {
@@ -285,9 +295,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
         if (!conversation.conversation) throw new Error("No conversation selected"); // This should never happen, just to satisfy TS
 
-        // If there is no stream, create one
-        if (!stream.value) await createstream(options);
-        // If there is still no stream, throw an error
+        await createstream(options);
         if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
 
         for (const user of conversation.conversation.participants) {
@@ -315,7 +323,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 screen: screen.value,
                 negotiation: false,
             }
-            streams.value.push({ stream: stream.value, signal: RTCSignal });
+            addstream(stream.value, RTCSignal);
             ws.call(RTCSignal)
         }
     }
