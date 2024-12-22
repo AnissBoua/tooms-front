@@ -57,27 +57,29 @@ export const useWebRTCStore = defineStore('rtc', () => {
     watch(() => video.value, async (value) => {
         if (!stream.value) return;
 
-        for (const peer of peers.value) {
-            console.log('Peer:', peer.user.id);
+        
+        if (!value) {
+            const tracks = stream.value.getVideoTracks();
+            tracks.forEach(track => track.stop());
 
-            if (!value) { // Remove video track from the peer connection
-                const tracks = stream.value.getVideoTracks();
-                tracks.forEach(track => track.stop());
-    
+            for (const peer of peers.value) {
+                console.log('Peer:', peer.user.id);
                 for (const sender of peer.peer.getSenders()) {
                     if (sender.track?.kind === 'video') peer.peer.removeTrack(sender);
                 }
-    
-                for (const track of tracks) {
-                    stream.value.removeTrack(track);
-                }
-            } else { // Add video track to the peer connection
-                const tmp = await devices({ audio: false, video: true });
-                if (!tmp) return;
-    
-                const track = tmp.getVideoTracks()[0];
-                stream.value.addTrack(track);
-    
+            }
+
+            for (const track of tracks) {
+                stream.value.removeTrack(track);
+            }
+        } else { // Add video track to the peer connection
+            const tmp = await devices({ audio: false, video: true });
+            if (!tmp) return;
+
+            const track = tmp.getVideoTracks()[0];
+            stream.value.addTrack(track);
+
+            for (const peer of peers.value) {
                 const sender = peer.peer.getSenders().find(sender => sender.track?.kind === 'video');
                 if (sender) sender.replaceTrack(track);
                 else peer.peer.addTrack(track, stream.value);
@@ -330,8 +332,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
             addstream(stream.value, RTCSignal);
             ws.call(RTCSignal)
         }
-
-        // signaltrigger.value = true;
     }
 
     async function answer(signal: RTCSignal) {
@@ -354,8 +354,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
         sendcandidates(data);
         if (!signal.negotiation) triggercandidates(signal.user.id);
-
-        // signaltrigger.value = true;
     }
 
     async function secondarycalls(users: number[]) {
