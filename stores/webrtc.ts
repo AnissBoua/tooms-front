@@ -388,6 +388,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
             };
             ws.call(RTCSignal);
         }
+
+        signaltrigger.value = true;
     }
 
     function tracks(peer: RTCPeerConnection) {
