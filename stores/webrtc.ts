@@ -10,6 +10,11 @@ import type { RTCBase } from '~/types/WebRTC/RTCBase';
 
 export const useWebRTCStore = defineStore('rtc', () => {
     const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]};
+    const VConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        aspectRatio: 16 / 9,
+    }; 
     const ws = useWebSocketStore()
     const conversation = useConversationStore();
     const auth = useAuthStore();
@@ -180,7 +185,10 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     }
 
-    async function devices(constraints: { audio: boolean, video: boolean }) {
+    async function devices(constraints: { audio: boolean, video: boolean | MediaTrackConstraints }) {
+        if (constraints.video) {
+            constraints.video = VConstraints;
+        }
         return await navigator.mediaDevices.getUserMedia(constraints);
     }
 
