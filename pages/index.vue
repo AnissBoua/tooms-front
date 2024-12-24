@@ -10,21 +10,26 @@
                 <Icon @click="audiocall" name="line-md:phone" class="text-3xl hover:text-violet-600 cursor-pointer" />
             </div>
         </div>
-        <div v-if="rtc.stream" class="absolute w-full bg-neutral-900">
-            <div class="flex space-x-4 p-4" ref="videos">
-                <video v-if="focus?.signal?.video" :srcObject="focus.stream" class="w-1/2 rounded-xl overflow-hidden object-cover" autoplay playsinline ></video>
-                <div v-else class="flex items-center justify-center w-1/2 bg-neutral-800 rounded-xl">
-                    <div v-if="focus?.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(focus?.signal.user) }} </div>
+        <div v-if="rtc.streams.length" class="absolute flex flex-col w-full bg-neutral-900" >
+            <div v-if="focus" @click="focus = null" class="w-full h-full flex flex-1 items-center justify-center space-x-4 p-4 my-4" ref="RFocus">
+                <div class="flex aspect-video">
+                    <video v-if="focus.signal?.video" id="focus-stream" :srcObject="focus.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
+                    </video>
+                    <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
+                        <div v-if="focus.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(focus.signal?.user) }} </div>
+                    </div>
                 </div>
-                <div class="flex space-x-4" :class="{'w-1/2': focus, 'w-full': !focus}">
-                    <template v-for="stream of rtc.streams.filter(s => s.stream.id != focus?.stream.id)" :key="stream.stream.id">
-                        <video v-if="stream.signal?.video" :id="stream.stream.id" :srcObject="stream.stream" class="w-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
+            </div>
+            <div class="w-full h-full flex flex-1 items-center justify-center space-x-4 p-4 my-4" :class="{'hidden': focus}" ref="videos">
+                <template v-for="stream of rtc.streams" :key="stream.stream.id">
+                    <div class="flex aspect-video">
+                        <video v-if="stream.signal?.video" @click="focusstream(stream)" @loadedmetadata="onmetadata(stream.stream.id)" :id="stream.stream.id" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
                         </video>
                         <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
                             <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
                         </div>
-                    </template>
-                </div>
+                    </div>
+                </template>
             </div>
             <div class="relative flex items-center justify-center w-full mb-4">
                 <div class="flex items-center bg-neutral-800 rounded-lg space-x-4 px-6 py-2">
@@ -42,7 +47,7 @@
                     </div>
                 </div>
             </div>
-            <div class="relative w-full h-4 flex items-center justify-center cursor-row-resize" @mousedown="resizing">
+            <div class="relative w-full h-4 flex items-center justify-center cursor-row-resize" @mousedown="resize">
                 <div class="absolute bottom-0 w-full h-px bg-neutral-700"></div>
                 <div class="absolute top-1/2 -translate-y-1/3 z-10 flex items-center justify-center w-10 h-10 bg-neutral-800 rounded-full text-neutral-400">
                     <Icon name="hugeicons:vertical-resize" class="text-2xl text-neutral-400" />
@@ -79,8 +84,11 @@ const message = ref<string>('');
 const messages = ref<HTMLElement | null>(null);
 
 const oncall = ref<boolean>(false);
-const videos = ref<HTMLDivElement | null>(null);
 const focus = ref<RTCStream | null>(null);
+const RFocus = ref<HTMLDivElement | null>(null);
+const videos = ref<HTMLDivElement | null>(null);
+const width = ref<number>(0);
+const ratios = ref<{ [key: string]: number }>({});
 const video = ref<HTMLVideoElement | null>(null);
 
 watch(() => store.conversation, (conversation) => {
@@ -104,16 +112,16 @@ watch(() => store.conversation?.messages, async (message_list) => {
     scroll.value = messages.value.scrollHeight;
 }, { deep: true });
 
-
 watch(() => rtc.stream, (stream) => {
     if (!stream) return;
     setupcall();
 });
 
-watch(() => rtc.streams, (streams) => {
-    if (!streams.length) return;
-    focus.value = streams[0];
-}, { deep: true });
+watch(() => videos.value, (value) => {
+    if (!value) return;
+    const SHeight = value.clientHeight * 10;
+    resizingVideos({ clientY: 0 } as MouseEvent, 0, SHeight);
+});
 
 const visiocall = async () => {
     rtc.init({ audio: true, video: true });
@@ -169,25 +177,72 @@ const scrolling = async () => {
             // If no new messages were added, decrement page
             if (count === store.conversation?.messages.length) store.conversation.page--;
         });
-
+        
     }
 }
 
 // Resize video
-const resizing = (e: MouseEvent) => {
+const onmetadata = (stramid: string) => {
+    const videoElement = document.getElementById(stramid) as HTMLVideoElement;
+    if (!videoElement) return;
+
+    const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
+    ratios.value[stramid] = videoRatio;
+
+    resizingVideos({ clientY: 0 } as MouseEvent, 0, videos.value?.clientHeight || 0);
+}
+
+const resizingFocus = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
+    if (!RFocus.value) return;
+
+    // Initializations
+    const min = 200;
+    const max = 650;
+    const delta = e.clientY - SY;
+    const height = Math.max(Math.min(max, SHeight + delta), min);
+    RFocus.value.style.minHeight = height + 'px';
+    RFocus.value.style.maxHeight = height + 'px';
+
+    const video = document.getElementById('focus-stream') as HTMLVideoElement;
+    if (!video) return;
+    
+    const ratio = 16 / 9;
+    video.style.width = height * ratio + 'px';
+} 
+
+const resizingVideos = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
     if (!videos.value) return;
 
-    const startY = e.clientY;
-    const startHeight = videos.value.clientHeight;
+    // Initializations
+    const min = 200;
+    const max = 650;
+    const delta = e.clientY - SY;
+    const height = Math.max(Math.min(max, SHeight + delta), min);
+    videos.value.style.minHeight = height + 'px';
+    videos.value.style.maxHeight = height + 'px';
+
+    // Calculate width and height for the videos, ratio should be user PC screen ratio
+    const defaultRatio = 16 / 9; // Fallback ratio
+
+    for (const stream of rtc.streams) {
+        const video = document.getElementById(stream.stream.id) as HTMLVideoElement;
+        if (!video) continue;
+
+        const ratio = ratios.value[stream.stream.id] || defaultRatio;
+        video.style.width = height * ratio + 'px';
+    }
+}
+
+const resize = (e: MouseEvent) => {
+    if (!videos.value) return;
+
+    const SY = e.clientY;
+    const VHeight = videos.value.clientHeight;
+    const RHeight = RFocus.value?.clientHeight || 0;
 
     const onMouseMove = (e: MouseEvent) => {
-        if (!videos.value) return;
-
-        const min = 200;
-        const max = 650;
-        const delta = e.clientY - startY;
-        const height = Math.max(Math.min(max, startHeight + delta), min);
-        videos.value.style.height = height + 'px';
+        resizingVideos(e, SY, VHeight);
+        resizingFocus(e, SY, RHeight);
     }
 
     const onMouseUp = () => {
@@ -197,6 +252,10 @@ const resizing = (e: MouseEvent) => {
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+}
+
+const focusstream = (stream: RTCStream) => {
+    focus.value = stream;
 }
 
 const toggleaudio = () => {
