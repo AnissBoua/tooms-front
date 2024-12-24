@@ -11,16 +11,27 @@
             </div>
         </div>
         <div v-if="rtc.streams.length" class="absolute flex flex-col w-full bg-neutral-900">
-            <div class="w-full h-full flex flex-1 items-center justify-center space-x-4 p-4" ref="videos">
-                <template v-for="stream of rtc.streams" :key="stream.stream.id">
-                    <div class="flex aspect-video">
-                        <video v-if="stream.signal?.video" @click="focusstream(stream)" @loadedmetadata="onmetadata(stream.stream.id)" :id="stream.stream.id" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
+            <div class="flex items-center justify-center my-2" ref="videos">
+                <div v-if="focus" @click="focus = null" class="flex items-end justify-center">
+                    <div class="flex items-center justify-center flex-1 aspect-video">
+                        <video v-if="focus.signal?.video" id="focus-stream" :srcObject="focus.stream" class="w-full h-full overflow-hidden object-cover" autoplay playsinline >
                         </video>
                         <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
-                            <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
+                            <div v-if="focus.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(focus.signal.user) }} </div>
                         </div>
                     </div>
-                </template>
+                </div>
+                <div class="w-full h-full flex flex-1 items-center justify-center space-x-4 p-4" :class="{'hidden': focus}" >
+                    <template v-for="stream of rtc.streams" :key="stream.stream.id">
+                        <div class="flex aspect-video">
+                            <video v-if="stream.signal?.video" @click="focusstream(stream)" @loadedmetadata="onmetadata(stream.stream.id)" :id="stream.stream.id" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
+                            </video>
+                            <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
+                                <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
             <div class="relative flex items-center justify-center w-full mb-4">
                 <div class="flex items-center bg-neutral-800 rounded-lg space-x-4 px-6 py-2">
@@ -106,11 +117,6 @@ watch(() => rtc.stream, (stream) => {
     if (!stream) return;
     setupcall();
 });
-
-watch(() => rtc.streams, (streams) => {
-    if (!streams.length) return;
-    focus.value = streams[0];
-}, { deep: true });
 
 watch(() => videos.value, (value) => {
     if (!value) return;
@@ -206,10 +212,23 @@ const resizing = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
         if (!videoElement) continue;
 
         const ratio = ratios.value[stream.stream.id] || defaultRatio;
-        videoElement.style.width = (height / 1.5) * ratio + 'px';
-        // videoElement.style.minWidth = (height / 1.5) * ratio + 'px';
-        // videoElement.style.maxWidth = (height / 1.5) * ratio + 'px';
+        videoElement.style.width = height * ratio + 'px';
+        // videoElement.style.minWidth = height * ratio + 'px';
+        // videoElement.style.maxWidth = height * ratio + 'px';
     }
+
+    // Set the focus-stream width and height
+    // For focus-stream, make calculations based on videos.value parent element width
+    const parent = videos.value.parentElement;
+    const videoElement = document.getElementById('focus-stream') as HTMLVideoElement;
+    if (!videoElement) return;
+    if (!parent) return;
+    
+    const ratio = 16 / 9;
+    console.log(parent.clientHeight);
+    videoElement.style.width = parent.clientHeight * ratio + 'px';
+    // videoElement.style.minWidth = height * ratio + 'px';
+    // videoElement.style.maxWidth = height * ratio + 'px';
 }
 
 const resize = (e: MouseEvent) => {
