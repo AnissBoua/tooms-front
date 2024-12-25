@@ -20,16 +20,25 @@
                     </div>
                 </div>
             </div>
-            <div class="w-full h-full flex flex-1 items-center justify-center space-x-4 p-4 my-4" :class="{'hidden': focus}" ref="videos">
-                <template v-for="stream of rtc.streams" :key="stream.stream.id">
-                    <div class="flex aspect-video">
-                        <video v-if="stream.signal?.video" @click="focusstream(stream)" @loadedmetadata="onmetadata(stream.stream.id)" :id="stream.stream.id" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
-                        </video>
-                        <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
-                            <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
+            <div ref="videos" class="flex overflow-y-scroll custom-scrollbar my-4">
+                <div class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto " :class="{'hidden': focus}" 
+                    :style="{
+                        'grid-template-columns': 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
+                    }">
+                    <template v-for="(stream, index) of rtc.streams" :key="stream.stream.id">
+                        <div class="flex items-center aspect-video" :class="{
+                            'justify-self-center': rtc.streams.length == 1,
+                            'justify-self-end': rtc.streams.length > 1 && index % 2 === 0,
+                            'justify-self-start': rtc.streams.length > 1 && index % 2 === 1
+                        }" @click="focusstream(stream)" :id="stream.stream.id">
+                            <video v-if="stream.signal?.video" @loadedmetadata="onmetadata(stream.stream.id)" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
+                            </video>
+                            <div v-else class="w-full h-full flex items-center justify-center bg-neutral-800 rounded-xl">
+                                <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
+                            </div>
                         </div>
-                    </div>
-                </template>
+                    </template>
+                </div>
             </div>
             <div class="relative flex items-center justify-center w-full mb-4">
                 <div class="flex items-center bg-neutral-800 rounded-lg space-x-4 px-6 py-2">
@@ -117,11 +126,11 @@ watch(() => rtc.stream, (stream) => {
     setupcall();
 });
 
-watch(() => videos.value, (value) => {
+watch(() => rtc.streams, (value) => {
+    console.log('videos resizing videos');
     if (!value) return;
-    const SHeight = value.clientHeight * 10;
-    resizingVideos({ clientY: 0 } as MouseEvent, 0, SHeight);
-});
+    resizingVideos({ clientY: 0 } as MouseEvent, 0, videos.value?.clientHeight || 0);
+}, { deep: true });
 
 const visiocall = async () => {
     rtc.init({ audio: true, video: true });
@@ -222,18 +231,35 @@ const resizingVideos = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
     videos.value.style.maxHeight = height + 'px';
 
     // Calculate width and height for the videos, ratio should be user PC screen ratio
-    const defaultRatio = 16 / 9; // Fallback ratio
+    const ratio = 16 / 9; // Fallback ratio
 
+    // Videos cell width
+    const style = window.getComputedStyle(videos.value.children[0] as HTMLElement);
+    const cols = style.getPropertyValue('grid-template-columns').split(' ').length;
+    const gap = parseInt(style.getPropertyValue('gap').split(' ')[0]);
+    console.log('cols', cols, 'gap', gap);
+    const WMax = videos.value.clientWidth / cols - gap;
+    
+    // const max = videos.value.
     for (const stream of rtc.streams) {
         const video = document.getElementById(stream.stream.id) as HTMLVideoElement;
         if (!video) continue;
 
-        const ratio = ratios.value[stream.stream.id] || defaultRatio;
-        video.style.width = height * ratio + 'px';
+        let W = height * ratio;
+        video.style.width = W + 'px';
+        video.style.maxWidth = WMax + 'px';
+
+        // Wait for the video to be resized
+        setTimeout(() => {
+            const H = video.clientWidth / ratio;
+            video.style.height = H + 'px';
+            // width.value = video.clientWidth;
+        }, 10);
     }
 }
 
 const resize = (e: MouseEvent) => {
+    e.preventDefault();
     if (!videos.value) return;
 
     const SY = e.clientY;
