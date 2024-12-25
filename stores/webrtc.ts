@@ -279,15 +279,21 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
     function logout() {
         if (stream.value) stream.value.getTracks().forEach(track => track.stop());
-        if (peers.value.length) {
-            for (const peer of peers.value) {
-                peer.peer.close();
-            }
-        }
         call.value = null;
+        oncall.value = false;
         stream.value = null;
-        peers.value = [];
+
+        for (const s of streams.value) {
+            s.stream.getTracks().forEach(track => track.stop());
+        }
         streams.value = [];
+
+        for (const peer of peers.value) {
+            peer.peer.close();
+        }
+        peers.value = [];
+        
+        signaltrigger.value = false;
     }
 
     function signaling(data: RTCSignal) {
