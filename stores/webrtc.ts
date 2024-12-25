@@ -19,6 +19,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
     const conversation = useConversationStore();
     const auth = useAuthStore();
 
+    // Trigger the ringtone, when a call is incoming the ringtone can be played only if the user have interacted with the page
+    const ringtone = ref<boolean>(false);
+
     const call = ref<RTCSignal | null>(null);
     const oncall = ref<boolean>(false);
     const stream = ref<MediaStream | null>(null);
@@ -588,6 +591,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     return {
+        ringtone,
         call,
         stream,
         audio,

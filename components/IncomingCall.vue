@@ -40,21 +40,19 @@ const rtc = useWebRTCStore();
 const video = ref<boolean>(false);
 const audio = ref<boolean>(false);
 
-const trigger = ref<boolean>(false);
 const ringtone = ref<HTMLAudioElement>(new Audio('/audios/ringtone.mp3'));
 ringtone.value.loop = true;
 ringtone.value.volume = 0.1;
-document.addEventListener('click', () => {
-    if (trigger.value) return;
-    ringtone.value.play();
-    trigger.value = true;
-});
+if (rtc.ringtone) ringtone.value.play();
 
+watch(() => rtc.ringtone, (value) => {
+    if (ringtone.value.paused && value) ringtone.value.play();
+});
 
 const emit = defineEmits(['close']);
 
 const accept = () => {
-    trigger.value = true;
+    rtc.ringtone = true;
     ringtone.value.pause();
     ringtone.value.currentTime = 0;
   
@@ -66,7 +64,7 @@ const accept = () => {
 const refuse = () => {
     ringtone.value.pause();
     ringtone.value.currentTime = 0;
-  
+
     console.log('Refusing call');
     // rtc.refuse(props.signal);
     emit('close');
