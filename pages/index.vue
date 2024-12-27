@@ -34,6 +34,7 @@
                             <video v-if="stream.signal?.video" @loadedmetadata="onmetadata(stream.stream.id)" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
                             </video>
                             <div v-else class="w-full h-full flex items-center justify-center bg-neutral-800 rounded-xl">
+                                <audio v-if="stream.signal?.audio" :srcObject="stream.stream" autoplay playsinline ></audio>
                                 <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
                             </div>
                         </div>
@@ -104,7 +105,7 @@ watch(() => store.conversation, (conversation) => {
     if (!conversation) return;
     if (!conversation.messages.length) {
         console.log('fetching messages');
-        // store.messages(conversation.page);
+        store.messages(conversation.page);
     }
 });
 
