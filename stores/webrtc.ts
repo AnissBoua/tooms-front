@@ -116,7 +116,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
             const video = screenStream.getVideoTracks()[0];
             
             for (const peer of peers.value) {
-                peer.peer.addTrack(video, screenStream);
             
                 const signal = streams.value.find(s => s.stream.id == stream.value?.id);
                 const RTCSignal: RTCSignal = { 
@@ -132,9 +131,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     negotiation: false,
                 };
                 addstream(screenStream, RTCSignal);
+                peer.peer.addTrack(video, screenStream);
             }
         } else {
-            const screenStream = streams.value.find(s => s.signal?.screen);
+            const screenStream = streams.value.find(s => {
+                if (!s.signal) return false;
+                if (!auth.user) return false;
+                return s.signal.screen && s.signal.user.id == auth.user.id;
+            });
             if (!screenStream) return;
     
             const video = screenStream.stream.getVideoTracks()[0];
@@ -534,11 +538,22 @@ export const useWebRTCStore = defineStore('rtc', () => {
             if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
             if (peer.peer.connectionState != 'connected') return;
 
+            let ID = stream.value.id;
+            let s = streams.value.find(s => s.stream.id == stream.value?.id);
+            if (!s) throw new Error("Stream not found");
+            if (!s.signal) throw new Error("Signal not found");
+
+            // It means that it's a screen sharing stream
+            if (s.signal.video == video.value && s.signal.audio == audio.value) {
+                s = streams.value.find(s => s.signal.screen && s.signal.user.id == auth.user?.id);
+                if (s) ID = s.stream.id;
+            }
+
             const offer = await peer.peer.createOffer();
             await peer.peer.setLocalDescription(offer);
     
             const RTCSignal: RTCSignal = {
-                stream_id: stream.value.id,
+                stream_id: ID,
                 user: auth.user,
                 toID: peer.user.id,
                 actives: [],
