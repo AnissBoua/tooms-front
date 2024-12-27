@@ -66,7 +66,7 @@ const refuse = () => {
     ringtone.value.currentTime = 0;
 
     console.log('Refusing call');
-    // rtc.refuse(props.signal);
+    rtc.refuse(props.signal);
     emit('close');
 };
 

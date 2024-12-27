@@ -60,6 +60,10 @@ export const useWebSocketStore = defineStore('ws', () => {
             rtc.signaling(signal);
         });
 
+        socket.value.on("refuse", (signal: RTCSignal) => {
+            rtc.refused(signal);
+        });
+
         socket.value.on("multi-call", (users: number[]) => {
             rtc.secondarycalls(users);
         });

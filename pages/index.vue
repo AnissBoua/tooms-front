@@ -237,7 +237,6 @@ const resizingVideos = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
     const style = window.getComputedStyle(videos.value.children[0] as HTMLElement);
     const cols = style.getPropertyValue('grid-template-columns').split(' ').length;
     const gap = parseInt(style.getPropertyValue('gap').split(' ')[0]);
-    console.log('cols', cols, 'gap', gap);
     const WMax = videos.value.clientWidth / cols - gap;
     
     // const max = videos.value.
