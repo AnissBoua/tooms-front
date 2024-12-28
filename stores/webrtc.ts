@@ -19,6 +19,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
     const conversation = useConversationStore();
     const auth = useAuthStore();
 
+    // Trigger the ringtone, when a call is incoming the ringtone can be played only if the user have interacted with the page
+    const ringtone = ref<boolean>(false);
+
     const call = ref<RTCSignal | null>(null);
     const oncall = ref<boolean>(false);
     const stream = ref<MediaStream | null>(null);
@@ -28,6 +31,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
     const streams = ref<RTCStream[]>([]);
     const peers = ref<RTCPeer[]>([]);
     const signaltrigger = ref<boolean>(false);
+    const refuses = ref<User[]>([]);
 
     watch(() => audio.value, async (value) => {
         if (!stream.value) return;
@@ -88,8 +92,12 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
             for (const peer of peers.value) {
                 const sender = peer.peer.getSenders().find(sender => sender.track?.kind === 'video');
-                if (sender) sender.replaceTrack(track);
-                else peer.peer.addTrack(track, stream.value);
+                if (sender) {
+                    sender.replaceTrack(track);
+                }
+                else {
+                    peer.peer.addTrack(track, stream.value);
+                }
             }
         }
         
@@ -112,7 +120,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
             const video = screenStream.getVideoTracks()[0];
             
             for (const peer of peers.value) {
-                peer.peer.addTrack(video, screenStream);
             
                 const signal = streams.value.find(s => s.stream.id == stream.value?.id);
                 const RTCSignal: RTCSignal = { 
@@ -128,9 +135,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     negotiation: false,
                 };
                 addstream(screenStream, RTCSignal);
+                peer.peer.addTrack(video, screenStream);
             }
         } else {
-            const screenStream = streams.value.find(s => s.signal?.screen);
+            const screenStream = streams.value.find(s => {
+                if (!s.signal) return false;
+                if (!auth.user) return false;
+                return s.signal.screen && s.signal.user.id == auth.user.id;
+            });
             if (!screenStream) return;
     
             const video = screenStream.stream.getVideoTracks()[0];
@@ -185,6 +197,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     }
 
+    //#region Setup
     async function devices(constraints: { audio: boolean, video: boolean | MediaTrackConstraints }) {
         if (constraints.video) {
             constraints.video = VConstraints;
@@ -245,7 +258,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 if (!conversation.conversation) return;
                 if (!auth.user) return;
                 if (!stream.value) return;
-                if (conversation.conversation.participants.length <= 2) return;
+                // if (conversation.conversation.participants.length <= 2) return;
 
                 const RTCConnected: RTCConnected = {
                     user: auth.user.id,
@@ -265,7 +278,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         const RTCPeer: RTCPeer = { user: user, peer: peer, candidates: [] };
 
         tracks(peer)
-        remotestream(peer)
+        remotestream(RTCPeer)
+        iceconnectionchange(RTCPeer)
         icecandidates(RTCPeer)
         negotiate(RTCPeer)
 
@@ -274,17 +288,77 @@ export const useWebRTCStore = defineStore('rtc', () => {
         return peer;
     }
 
-    function logout() {
-        if (stream.value) stream.value.getTracks().forEach(track => track.stop());
-        if (peers.value.length) {
-            for (const peer of peers.value) {
-                peer.peer.close();
+    function tracks(peer: RTCPeerConnection) {
+        if (!stream.value) throw new Error("Stream it's not initialized"); // This should never happen, just to satisfy TS
+        
+        for (const track of stream.value.getTracks()) {
+            peer.addTrack(track, stream.value)
+        }
+    }
+
+    function remotestream(peer: RTCPeer) {
+        peer.peer.ontrack = (event) => {
+            const ids = streams.value.map(s => s.stream.id);
+            for (const s of event.streams) {
+                if (ids.includes(s.id)) continue;
+                addstream(s, null);
+            }
+
+            event.streams.forEach(s => {
+                s.onremovetrack = (event) => {
+                    const stream = streams.value.find(stream => stream.stream.id == s.id);
+                    console.log('Removing stream:', stream);
+                    if (stream?.signal.screen) streams.value = streams.value.filter(stream => stream.stream.id != s.id);
+                }
+
+                // If the stream it's in active = false, it can't be activated again, it needs to be replaced
+                const tmp = streams.value.find(stream => stream.stream.id == s.id);
+                if (!tmp) return;
+
+                if (!tmp.stream.active && s.active) {
+                    const ID = tmp.stream.id;
+                    streams.value = streams.value.map(stream => {
+                        if (stream.stream.id == ID) stream.stream = s;
+                        return stream;
+                    });
+                }
+            });
+        }
+    }
+
+    function iceconnectionchange(peer: RTCPeer) {
+        peer.peer.oniceconnectionstatechange = (event) => {
+            const state = peer.peer.iceConnectionState;
+            if (state === "disconnected" || state === "failed" || state === "closed") {
+                // Handle stream cleanup
+                const s = streams.value.find(s => s.signal?.user.id == peer.user.id);
+                if (s) streams.value = streams.value.filter(_ => _.stream.id != s.stream.id);
+
+                // Handle peer cleanup
+                peers.value = peers.value.filter(p => p.user.id != peer.user.id);
             }
         }
+    }
+    //#endregion Setup
+
+    function logout() {
+        if (stream.value) stream.value.getTracks().forEach(track => track.stop());
         call.value = null;
+        oncall.value = false;
         stream.value = null;
-        peers.value = [];
+
+        for (const s of streams.value) {
+            s.stream.getTracks().forEach(track => track.stop());
+        }
         streams.value = [];
+
+        for (const peer of peers.value) {
+            peer.peer.close();
+        }
+        peers.value = [];
+
+        refuses.value = [];
+        signaltrigger.value = false;
     }
 
     function signaling(data: RTCSignal) {
@@ -297,7 +371,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
     async function incomingcall(signal: RTCSignal) {
         try {
             call.value = signal;
-            if (!conversation.conversation) {
+            if (!conversation.conversation || conversation.conversation.id != signal.conversation) {
                 conversation.conversation = await conversation.one(signal.conversation);
             }
         } catch (error) {
@@ -364,103 +438,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!signal.negotiation) triggercandidates(signal.user.id);
     }
 
-    async function secondarycalls(users: number[]) {
-        if (!auth.user) throw new Error("No user authenticated");
-        if (!conversation.conversation) throw new Error("No conversation selected");
-        if (!stream.value) throw new Error("No stream available");
-
-        for (const u of users) {
-            if (u == auth.user.id) continue;
-            if (peers.value.find(p => p.user.id == u)) continue;
-
-            const user = conversation.conversation.participants.find(p => p.id == u);
-            if (!user) throw new Error("User not found");
-
-            const peer = createpeer(user);
-
-            const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
-
-            const RTCSignal: RTCSignal = { 
-                stream_id: stream.value.id,
-                user: auth.user,
-                toID: user.id,
-                actives: [],
-                conversation: conversation.conversation.id, 
-                data: offer, // TODO
-                audio: audio.value,
-                video: video.value,
-                screen: screen.value,
-                negotiation: false,
-            };
-            ws.call(RTCSignal);
-        }
-    }
-
-    function tracks(peer: RTCPeerConnection) {
-        if (!stream.value) throw new Error("Stream it's not initialized"); // This should never happen, just to satisfy TS
-        
-        for (const track of stream.value.getTracks()) {
-            peer.addTrack(track, stream.value)
-        }
-    }
-
-    function remotestream(peer: RTCPeerConnection) {
-        peer.ontrack = (event) => {
-            const ids = streams.value.map(s => s.stream.id);
-            for (const s of event.streams) {
-                if (ids.includes(s.id)) continue;
-                addstream(s, null);
-            }
-
-            event.streams.forEach(s => {
-                s.onremovetrack = (event) => {
-                    const stream = streams.value.find(stream => stream.stream.id == s.id);
-                    console.log('Removing stream:', stream);
-                    if (stream?.signal.screen) streams.value = streams.value.filter(stream => stream.stream.id != s.id);
-                }
-            });
-        }
-    }
-
-    // Require the missing signals
-    function requiresignal() {
-        console.log("Stream:", streams.value);
-        signaltrigger.value = false;
-        
-        const ids = streams.value.filter(s => s.signal == null).map(s => s.stream.id);
-        if (ids.length == 0) return;
-        if (!auth.user) throw new Error("No user authenticated");
-        if (!conversation.conversation) throw new Error("No conversation selected");
-
-        const req: RTCSignalRequest = {
-            ids: ids,
-            user: auth.user,
-            conversation: conversation.conversation.id,
-        }
-
-        ws.call(req, 'require-signal');
-    }
-
-    function signalrequested(signal: RTCSignalRequest) {
-        const signals = streams.value.filter(s => signal.ids.includes(s.stream.id)).map(s => s.signal);
-        if (!signals) return 
-        
-        for (const s of signals) {
-            if (s) ws.call(s, 'signal');
-        }
-    }
-
-    function signal(signal: RTCSignal) {
-        syncstreams(signal);
-    }
-
-    function syncstreams(signal: RTCSignal) {
-        for (const stream of streams.value) {
-            if (stream.stream.id == signal.stream_id) stream.signal = signal;
-        }
-    }
-
     //#region ICE Candidates
     // Register possible candidates 
     function icecandidates(peer: RTCPeer) {
@@ -512,6 +489,77 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
     //#endregion End ICE Candidates
 
+    async function secondarycalls(users: number[]) {
+        if (!auth.user) throw new Error("No user authenticated");
+        if (!conversation.conversation) throw new Error("No conversation selected");
+        if (!stream.value) throw new Error("No stream available");
+
+        for (const u of users) {
+            if (u == auth.user.id) continue;
+            if (peers.value.find(p => p.user.id == u)) continue;
+            if (refuses.value.find(r => r.id == u)) continue;
+
+            const user = conversation.conversation.participants.find(p => p.id == u);
+            if (!user) throw new Error("User not found");
+
+            const peer = createpeer(user);
+
+            const offer = await peer.createOffer();
+            await peer.setLocalDescription(offer);
+
+            const RTCSignal: RTCSignal = { 
+                stream_id: stream.value.id,
+                user: auth.user,
+                toID: user.id,
+                actives: [],
+                conversation: conversation.conversation.id, 
+                data: offer, // TODO
+                audio: audio.value,
+                video: video.value,
+                screen: screen.value,
+                negotiation: false,
+            };
+            ws.call(RTCSignal);
+        }
+    }
+
+    // Require the missing signals
+    function requiresignal() {
+        signaltrigger.value = false;
+        
+        const ids = streams.value.filter(s => s.signal == null).map(s => s.stream.id);
+        if (ids.length == 0) return;
+        if (!auth.user) throw new Error("No user authenticated");
+        if (!conversation.conversation) throw new Error("No conversation selected");
+
+        const req: RTCSignalRequest = {
+            ids: ids,
+            user: auth.user,
+            conversation: conversation.conversation.id,
+        }
+
+        ws.call(req, 'require-signal');
+    }
+
+    function signalrequested(signal: RTCSignalRequest) {
+        const signals = streams.value.filter(s => signal.ids.includes(s.stream.id)).map(s => s.signal);
+        if (!signals) return 
+        
+        for (const s of signals) {
+            if (s) ws.call(s, 'signal');
+        }
+    }
+
+    function signal(signal: RTCSignal) {
+        syncstreams(signal);
+    }
+
+    function syncstreams(signal: RTCSignal) {
+        for (const stream of streams.value) {
+            if (stream.stream.id == signal.stream_id) stream.signal = signal;
+        }
+    }
+
     //#region Negotiation
     // Sending negotiation
     async function negotiate(peer: RTCPeer) {
@@ -521,11 +569,22 @@ export const useWebRTCStore = defineStore('rtc', () => {
             if (!conversation.conversation) throw new Error("No conversation selected"); // TODO : should select the conversation
             if (peer.peer.connectionState != 'connected') return;
 
+            let ID = stream.value.id;
+            let s = streams.value.find(s => s.stream.id == stream.value?.id);
+            if (!s) throw new Error("Stream not found");
+            if (!s.signal) throw new Error("Signal not found");
+
+            // It means that it's a screen sharing stream
+            if (s.signal.video == video.value && s.signal.audio == audio.value) {
+                s = streams.value.find(s => s.signal.screen && s.signal.user.id == auth.user?.id);
+                if (s) ID = s.stream.id;
+            }
+
             const offer = await peer.peer.createOffer();
             await peer.peer.setLocalDescription(offer);
     
             const RTCSignal: RTCSignal = {
-                stream_id: stream.value.id,
+                stream_id: ID,
                 user: auth.user,
                 toID: peer.user.id,
                 actives: [],
@@ -587,7 +646,29 @@ export const useWebRTCStore = defineStore('rtc', () => {
         logout();
     }
 
+    function refuse(signal: RTCSignal) {
+        if (!auth.user) throw new Error("No user authenticated");
+
+        signal.toID = signal.user.id;
+        signal.user = auth.user;
+        
+        ws.call(signal, 'refuse');
+        logout();
+    }
+
+    function refused(signal: RTCSignal) {
+        
+        refuses.value.push(signal.user);
+
+        const peer = peers.value.find(p => p.user.id == signal.user.id);
+        if (!peer) return;
+        
+        peer.peer.close();
+        peers.value = peers.value.filter(p => p.user.id != signal.user.id);
+    }
+
     return {
+        ringtone,
         call,
         stream,
         audio,
@@ -606,5 +687,7 @@ export const useWebRTCStore = defineStore('rtc', () => {
         signalrequested,
         signal,
         hangout,
+        refuse,
+        refused,
     }
 });
