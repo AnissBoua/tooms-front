@@ -20,7 +20,7 @@
                     </div>
                 </div>
             </div>
-            <div ref="videos" class="flex overflow-y-scroll custom-scrollbar my-4">
+            <div v-else ref="videos" class="flex overflow-y-scroll custom-scrollbar my-4">
                 <div class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto " :class="{'hidden': focus}" 
                     :style="{
                         'grid-template-columns': 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
@@ -128,7 +128,6 @@ watch(() => rtc.stream, (stream) => {
 });
 
 watch(() => rtc.streams, (value) => {
-    console.log('videos resizing videos');
     if (!value) return;
     resizingVideos({ clientY: 0 } as MouseEvent, 0, videos.value?.clientHeight || 0);
 }, { deep: true });
@@ -260,10 +259,9 @@ const resizingVideos = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
 
 const resize = (e: MouseEvent) => {
     e.preventDefault();
-    if (!videos.value) return;
 
     const SY = e.clientY;
-    const VHeight = videos.value.clientHeight;
+    const VHeight = videos.value?.clientHeight;
     const RHeight = RFocus.value?.clientHeight || 0;
 
     const onMouseMove = (e: MouseEvent) => {
