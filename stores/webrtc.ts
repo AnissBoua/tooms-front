@@ -92,8 +92,12 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
             for (const peer of peers.value) {
                 const sender = peer.peer.getSenders().find(sender => sender.track?.kind === 'video');
-                if (sender) sender.replaceTrack(track);
-                else peer.peer.addTrack(track, stream.value);
+                if (sender) {
+                    sender.replaceTrack(track);
+                }
+                else {
+                    peer.peer.addTrack(track, stream.value);
+                }
             }
         }
         
@@ -305,6 +309,18 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     const stream = streams.value.find(stream => stream.stream.id == s.id);
                     console.log('Removing stream:', stream);
                     if (stream?.signal.screen) streams.value = streams.value.filter(stream => stream.stream.id != s.id);
+                }
+
+                // If the stream it's in active = false, it can't be activated again, it needs to be replaced
+                const tmp = streams.value.find(stream => stream.stream.id == s.id);
+                if (!tmp) return;
+
+                if (!tmp.stream.active && s.active) {
+                    const ID = tmp.stream.id;
+                    streams.value = streams.value.map(stream => {
+                        if (stream.stream.id == ID) stream.stream = s;
+                        return stream;
+                    });
                 }
             });
         }
