@@ -1,11 +1,14 @@
 <template>
-    <div v-if="store.conversation" class="relative min-h-screen max-h-screen h-screen flex flex-col">
-        <div class="flex items-center justify-between border-b border-neutral-800 p-4">
-            <div class="flex items-center space-x-4">
+    <div v-if="store.conversation" class="relative min-h-screen max-h-screen h-screen flex flex-col overflow-x-scroll" @touchstart="touchstart" @touchend="touchend">
+        <div class="flex items-center justify-between border-b border-neutral-800 p-2 md:p-4">
+            <div class="flex items-center space-x-2 md:space-x-4 overflow-hidden text-ellipsis whitespace-nowrap">
+                <div @click="store.mobile = false" class="flex md:hidden items-center space-x-2 cursor-pointer">
+                    <Icon name="material-symbols:chevron-left-rounded" class="text-2xl" />
+                </div>
                 <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
-                <p> {{ store.conversation.name || name() }} </p>
+                <p class="overflow-hidden text-ellipsis whitespace-nowrap"> {{ store.conversation.name || name() }} </p>
             </div>
-            <div class="space-x-6">
+            <div class="flex flex-no-wrap space-x-4 md:space-x-6">
                 <Icon @click="visiocall" name="solar:camera-outline" class="text-3xl hover:text-violet-600 cursor-pointer" />
                 <Icon @click="audiocall" name="line-md:phone" class="text-3xl hover:text-violet-600 cursor-pointer" />
             </div>
@@ -21,15 +24,15 @@
                 </div>
             </div>
             <div v-else ref="videos" class="flex overflow-y-scroll custom-scrollbar my-4">
-                <div class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto " :class="{'hidden': focus}" 
+                <div id="videos-container" class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto" :class="{'hidden': focus}" 
                     :style="{
-                        'grid-template-columns': 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
+                        'grid-template-columns': $device.isMobileOrTablet ? '1fr' : 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
                     }">
                     <template v-for="(stream, index) of rtc.streams" :key="stream.stream.id">
                         <div class="flex items-center aspect-video" :class="{
                             'justify-self-center': rtc.streams.length == 1,
-                            'justify-self-end': rtc.streams.length > 1 && index % 2 === 0,
-                            'justify-self-start': rtc.streams.length > 1 && index % 2 === 1
+                            'justify-self-center md:justify-self-end': rtc.streams.length > 1 && index % 2 === 0,
+                            'justify-self-center md:justify-self-start': rtc.streams.length > 1 && index % 2 === 1
                         }" @click="focusstream(stream)" :id="stream.stream.id">
                             <video v-if="stream.signal?.video" @loadedmetadata="onmetadata(stream.stream.id)" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
                             </video>
@@ -89,6 +92,8 @@ const rtc = useWebRTCStore();
 
 const scroll = ref<number>(0);
 const scrollRef = ref<HTMLElement | null>(null);
+
+const touchX = ref<number>(0);
 
 const message = ref<string>('');
 const messages = ref<HTMLElement | null>(null);
@@ -188,6 +193,17 @@ const scrolling = async () => {
         });
         
     }
+}
+
+const touchstart = (e: Event) => {
+    const touch = (e as TouchEvent).touches[0];
+    touchX.value = touch.clientX;
+}
+
+const touchend = (e: Event) => {
+    const touch = (e as TouchEvent).changedTouches[0];
+    const diff = touch.clientX - touchX.value;
+    if (diff > 100) store.mobile = false;
 }
 
 // Resize video

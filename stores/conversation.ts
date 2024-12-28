@@ -7,6 +7,9 @@ import type { User } from '~/types/user';
 export const useConversationStore = defineStore('conversation', () => {
     const conversations = ref<Conversation[]>([]);
     const conversation = ref<Conversation | null>(null);
+    
+    // Used to determine if the mobile conversation is selected
+    const mobile = ref<boolean>(false);
 
     function logout() {
         conversation.value = null;
@@ -93,6 +96,7 @@ export const useConversationStore = defineStore('conversation', () => {
     return {
         conversations,
         conversation,
+        mobile,
         logout,
         get,
         one,
