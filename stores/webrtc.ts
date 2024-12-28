@@ -274,7 +274,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         const RTCPeer: RTCPeer = { user: user, peer: peer, candidates: [] };
 
         tracks(peer)
-        remotestream(peer)
+        remotestream(RTCPeer)
+        iceconnectionchange(RTCPeer)
         icecandidates(RTCPeer)
         negotiate(RTCPeer)
 
@@ -291,8 +292,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
         }
     }
 
-    function remotestream(peer: RTCPeerConnection) {
-        peer.ontrack = (event) => {
+    function remotestream(peer: RTCPeer) {
+        peer.peer.ontrack = (event) => {
             const ids = streams.value.map(s => s.stream.id);
             for (const s of event.streams) {
                 if (ids.includes(s.id)) continue;
@@ -306,6 +307,20 @@ export const useWebRTCStore = defineStore('rtc', () => {
                     if (stream?.signal.screen) streams.value = streams.value.filter(stream => stream.stream.id != s.id);
                 }
             });
+        }
+    }
+
+    function iceconnectionchange(peer: RTCPeer) {
+        peer.peer.oniceconnectionstatechange = (event) => {
+            const state = peer.peer.iceConnectionState;
+            if (state === "disconnected" || state === "failed" || state === "closed") {
+                // Handle stream cleanup
+                const s = streams.value.find(s => s.signal?.user.id == peer.user.id);
+                if (s) streams.value = streams.value.filter(_ => _.stream.id != s.stream.id);
+
+                // Handle peer cleanup
+                peers.value = peers.value.filter(p => p.user.id != peer.user.id);
+            }
         }
     }
     //#endregion Setup
