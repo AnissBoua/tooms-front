@@ -1,12 +1,12 @@
 <template>
-    <div class="flex items-center justify-center h-screen">
-        <div class="w-1/3 bg-neutral-900 rounded-xl mx-auto px-6 py-4">
+    <div class="flex items-center justify-center h-screen px-4 sm:px-10">
+        <div class="w-full lg:w-1/2 bg-neutral-900 rounded-xl mx-auto px-4 sm:px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-xl font-bold">Créer une conversation</h1>
+                    <h1 class="text-lg sm:text-xl font-bold">Créer une conversation</h1>
                     <p class="text-neutral-400">Entrez les noms des personnes avec lesquelles vous souhaitez discuter</p>
                 </div>
-                <div>
+                <div @click="close">
                     <Icon name="solar:close-circle-outline" class="text-2xl cursor-pointer hover:text-red-500" />
                 </div>
             </div>
@@ -64,6 +64,8 @@ const timer = ref<ReturnType<typeof setTimeout> | null>(null);
 const selected = ref<User[]>([]);
 const group = ref('');
 
+const emit = defineEmits(['close']);
+
 watch(() => search.value, (value) => {
     if (timer.value) clearTimeout(timer.value);
     timer.value = setTimeout(async () => {
@@ -82,5 +84,9 @@ const create = () => {
         users: selected.value
     };
     store.create(data);
+}
+
+const close = () => {
+    emit('close');
 }
 </script>
