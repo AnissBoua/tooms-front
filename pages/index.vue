@@ -1,5 +1,5 @@
 <template>
-    <div v-if="store.conversation" class="relative min-h-screen max-h-screen h-screen flex flex-col">
+    <div v-if="store.conversation" class="relative min-h-screen max-h-screen h-screen flex flex-col overflow-x-scroll" @touchstart="touchstart" @touchend="touchend">
         <div class="flex items-center justify-between border-b border-neutral-800 p-2 md:p-4">
             <div class="flex items-center space-x-2 md:space-x-4 overflow-hidden text-ellipsis whitespace-nowrap">
                 <div @click="store.mobile = false" class="flex md:hidden items-center space-x-2 cursor-pointer">
@@ -92,6 +92,8 @@ const rtc = useWebRTCStore();
 
 const scroll = ref<number>(0);
 const scrollRef = ref<HTMLElement | null>(null);
+
+const touchX = ref<number>(0);
 
 const message = ref<string>('');
 const messages = ref<HTMLElement | null>(null);
@@ -191,6 +193,17 @@ const scrolling = async () => {
         });
         
     }
+}
+
+const touchstart = (e: Event) => {
+    const touch = (e as TouchEvent).touches[0];
+    touchX.value = touch.clientX;
+}
+
+const touchend = (e: Event) => {
+    const touch = (e as TouchEvent).changedTouches[0];
+    const diff = touch.clientX - touchX.value;
+    if (diff > 100) store.mobile = false;
 }
 
 // Resize video
