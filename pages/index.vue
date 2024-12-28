@@ -24,15 +24,15 @@
                 </div>
             </div>
             <div v-else ref="videos" class="flex overflow-y-scroll custom-scrollbar my-4">
-                <div class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto " :class="{'hidden': focus}" 
+                <div id="videos-container" class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto" :class="{'hidden': focus}" 
                     :style="{
-                        'grid-template-columns': 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
+                        'grid-template-columns': $device.isMobileOrTablet ? '1fr' : 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
                     }">
                     <template v-for="(stream, index) of rtc.streams" :key="stream.stream.id">
                         <div class="flex items-center aspect-video" :class="{
                             'justify-self-center': rtc.streams.length == 1,
-                            'justify-self-end': rtc.streams.length > 1 && index % 2 === 0,
-                            'justify-self-start': rtc.streams.length > 1 && index % 2 === 1
+                            'justify-self-center md:justify-self-end': rtc.streams.length > 1 && index % 2 === 0,
+                            'justify-self-center md:justify-self-start': rtc.streams.length > 1 && index % 2 === 1
                         }" @click="focusstream(stream)" :id="stream.stream.id">
                             <video v-if="stream.signal?.video" @loadedmetadata="onmetadata(stream.stream.id)" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
                             </video>
