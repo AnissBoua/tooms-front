@@ -2,6 +2,9 @@
     <div v-if="store.conversation" class="relative min-h-screen max-h-screen h-screen flex flex-col">
         <div class="flex items-center justify-between border-b border-neutral-800 p-4">
             <div class="flex items-center space-x-4">
+                <div @click="store.mobile = false" class="flex md:hidden items-center space-x-2 cursor-pointer">
+                    <Icon name="material-symbols:chevron-left-rounded" class="text-2xl" />
+                </div>
                 <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
                 <p> {{ store.conversation.name || name() }} </p>
             </div>
