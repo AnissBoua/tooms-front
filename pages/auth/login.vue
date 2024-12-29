@@ -8,7 +8,7 @@
                 <div class="space-y-2">
                     <div class="flex justify-between">
                         <label for="password">Password</label>
-                        <CLink>Forgot password?</CLink>
+                        <CLink v-if="false">Forgot password?</CLink>
                     </div>
                     <div class="flex items-center w-full bg-neutral-900 ring-1 ring-neutral-800/70 focus:ring-violet-800 outline-none rounded overflow-hidden space-x-2 px-2">
                         <Icon name="material-symbols-light:lock-outline" class="w-5 h-5 text-neutral-500" />
