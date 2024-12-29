@@ -2,8 +2,8 @@
     <div v-if="mounted" class="min-h-screen relative flex flex-col">
         <div class="absolute -top-2/3 w-screen h-[80rem] bg-[radial-gradient(closest-side,theme(colors.violet.800/30%),theme(colors.transparent))]"></div>
         <div class="relative z-10 flex flex-1 flex-col items-center justify-center space-y-6">
-            <div class="w-full flex items-start justify-center space-x-28">
-                <div class="w-1/5 space-y-10">
+            <div class="w-full flex flex-col md:flex-row items-start justify-center space-y-8 md:space-y-0 md:space-x-10 xl:space-x-28 px-4">
+                <div class="w-full md:w-2/5 xl:w-1/5 space-y-10">
                     <div class="flex items-center space-x-2">
                         <img class="w-8 h-8" src="/images/logo.png" alt="logo">
                         <p class="text-xl">Tooms</p>
@@ -26,12 +26,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="w-1/3 bg-neutral-950 bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-50 ring-1 ring-neutral-800/50 rounded-2xl space-y-7 px-14 py-14">
-                    <div class="flex space-x-4">
-                        <Input @change="name = $event" label="First name" name="name" id="name" placeholder="First name" icon="hugeicons:user" />
-                        <Input @change="lastname = $event" label="Last name" name="lastname" id="lastname" placeholder="Last name" icon="hugeicons:user" />
+                <div class="w-full md:w-1/2 bg-neutral-950 bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-50 ring-1 ring-neutral-800/50 rounded-2xl space-y-7 px-4 sm:px-8 lg:px-14 py-4 sm:py-6 lg:py-14">
+                    <div class="flex flex-col sm:flex-row space-y-7 sm:space-y-0 sm:space-x-4">
+                        <Input @update:input="name = $event" :input="name" label="First name" name="name" id="name" placeholder="First name" icon="hugeicons:user" />
+                        <Input @update:input="lastname = $event" :input="lastname" label="Last name" name="lastname" id="lastname" placeholder="Last name" icon="hugeicons:user" />
                     </div>
-                    <Input @change="email = $event" label="Email" name="email" id="email" placeholder="Email" icon="mynaui:envelope" />
+                    <Input @update:input="email = $event" :input="email" label="Email" name="email" id="email" placeholder="Email" icon="mynaui:envelope" />
                     <div class="space-y-2">
                         <label for="password">Password</label>
                         <div class="flex items-center w-full bg-neutral-900 ring-1 ring-neutral-800/70 focus:ring-violet-800 outline-none rounded overflow-hidden space-x-2 px-2">

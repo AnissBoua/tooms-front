@@ -1,14 +1,14 @@
 <template>
     <div v-if="mounted" class="min-h-screen relative flex flex-col">
         <div class="absolute -top-2/3 w-screen h-[80rem] bg-[radial-gradient(closest-side,theme(colors.violet.800/30%),theme(colors.transparent))]"></div>
-        <div class="relative z-10 flex flex-1 flex-col items-center justify-center space-y-10">
+        <div class="relative z-10 flex flex-1 flex-col items-center justify-center space-y-10 px-2">
             <p class="text-xl">Login to Tooms</p>
-            <div class="w-1/3 bg-neutral-950 bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-50 ring-1 ring-neutral-800/50 rounded-2xl space-y-7 px-14 py-14">
+            <div class="w-full md:w-1/2 xl:w-1/3 bg-neutral-950 bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-50 ring-1 ring-neutral-800/50 rounded-2xl space-y-7 px-4 md:px-14 py-4 md:py-14">
                 <Input @update:input="email = $event" :input="email" label="Username or email" name="email" id="email" placeholder="Username or email" icon="material-symbols:account-circle-full" />
                 <div class="space-y-2">
                     <div class="flex justify-between">
                         <label for="password">Password</label>
-                        <CLink>Forgot password?</CLink>
+                        <CLink v-if="false">Forgot password?</CLink>
                     </div>
                     <div class="flex items-center w-full bg-neutral-900 ring-1 ring-neutral-800/70 focus:ring-violet-800 outline-none rounded overflow-hidden space-x-2 px-2">
                         <Icon name="material-symbols-light:lock-outline" class="w-5 h-5 text-neutral-500" />
