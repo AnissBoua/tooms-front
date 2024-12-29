@@ -27,7 +27,7 @@
                     </div>
                 </div>
                 <div class="w-full md:w-1/2 bg-neutral-950 bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-50 ring-1 ring-neutral-800/50 rounded-2xl space-y-7 px-4 sm:px-8 lg:px-14 py-4 sm:py-6 lg:py-14">
-                    <div class="flex flex-col sm:flex-row space-y-7 sm:space-x-4">
+                    <div class="flex flex-col sm:flex-row space-y-7 sm:space-y-0 sm:space-x-4">
                         <Input @update:input="name = $event" :input="name" label="First name" name="name" id="name" placeholder="First name" icon="hugeicons:user" />
                         <Input @update:input="lastname = $event" :input="lastname" label="Last name" name="lastname" id="lastname" placeholder="Last name" icon="hugeicons:user" />
                     </div>
