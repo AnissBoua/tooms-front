@@ -50,9 +50,11 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.on("message", (data: Message) => {
             console.log("Received message:", data);
 
+            conversation.updatePreview(data);
+
             if (!conversation.conversation) return;
             if (data.conversation.id !== conversation.conversation.id) return;
-            
+
             conversation.addMessage(data);
         });
 

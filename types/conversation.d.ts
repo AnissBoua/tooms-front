@@ -6,5 +6,6 @@ export interface Conversation {
     name: string;
     participants: User[];
     messages: Message[];
+    lastMessage?: Message | null;
     page: number;
 }

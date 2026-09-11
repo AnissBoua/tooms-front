@@ -65,28 +65,41 @@ export const useConversationStore = defineStore('conversation', () => {
         return [];
     }
 
-    async function create( data: { name: string, users: User[]}) {
+    async function create( data: { name?: string, users: User[]}) {
         try {
             const req = {
-                name: data.name,
+                name: data.name || undefined,
                 users: data.users.map(user => user.id),
             }
-            
+
             const res = await useInterceptorFetch<Conversation>('/api/conversations', {
                 method: 'POST',
                 body: req,
             });
 
+            res.messages = res.messages ?? [];
+            res.page = 1;
             conversations.value.push(res);
+
+            return res;
         } catch (error) {
             console.error('CONVERSATION::STORE::CREATE');
             console.error(error);
         }
+
+        return null;
     }
 
     function addMessage(message: Message) {
         if (!conversation.value) return;
         conversation.value.messages.push(message);
+    }
+
+    // Keep the sidebar's last-message preview live as messages arrive over the websocket,
+    // even for conversations that aren't the currently open one.
+    function updatePreview(message: Message) {
+        const match = conversations.value.find(c => c.id === message.conversation.id);
+        if (match) match.lastMessage = message;
     }
 
     function initials(user: User) {
@@ -104,6 +117,7 @@ export const useConversationStore = defineStore('conversation', () => {
         search,
         create,
         addMessage,
+        updatePreview,
         initials,
     }
 });
