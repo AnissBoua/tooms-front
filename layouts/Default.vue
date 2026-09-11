@@ -1,6 +1,6 @@
 <template>
     <div class="relative flex h-screen overflow-x-hidden">
-        <div v-if="!isAuth" class="w-full md:w-1/3 lg:w-1/4 bg-neutral-950 border-r border-neutral-800">
+        <div v-if="!isPublic" class="w-full md:w-1/3 lg:w-1/4 bg-neutral-950 border-r border-neutral-800">
             <Sidebar />
         </div>
         <div class="absolute z-10 w-full md:static flex-1 bg-neutral-950 transition-all duration-200 ease-in-out" :class="{'left-full': auth.user && !conversation.mobile, 'left-0': conversation.mobile}">
@@ -20,12 +20,13 @@ const rtc = useWebRTCStore();
 const conversation = useConversationStore();
 
 const route = useRoute();
-const isAuth = computed<Boolean>(() => route.path.includes('/auth'));
+// The homepage and auth pages are public; only the chat app itself requires a session
+const isPublic = computed<Boolean>(() => route.path === '/' || route.path.includes('/auth'));
 
 const incoming = ref<RTCSignal | null>(null);
 
 onMounted(() => {
-  if (!auth.token && !route.path.includes('/auth')) navigateTo('/auth/login');
+  if (!auth.token && !isPublic.value) navigateTo('/auth/login');
 });
 
 watch(() => rtc.call, (call) => {

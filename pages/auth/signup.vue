@@ -69,12 +69,12 @@ const visible = ref<boolean>(false);
 const toggleVisible = () => visible.value = !visible.value;
 
 onMounted(() => {
-    if (store.token) navigateTo('/');
+    if (store.token) navigateTo('/app');
     setTimeout(() => mounted.value = true, 20);
 });
 
 watch(() => store.token, (token) => {
-    if (token) navigateTo('/');
+    if (token) navigateTo('/app');
 });
 
 const register = async () => {
