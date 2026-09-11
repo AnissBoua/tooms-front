@@ -164,11 +164,10 @@ useHead({
 
 const auth = useAuthStore();
 
-// TODO: replace with your real profile links before sharing this page
 const links = {
-    github: '#',
-    linkedin: '',
-    email: 'anisbouainbi@gmail.com',
+    github: 'https://github.com/AnissBoua',
+    linkedin: 'https://www.linkedin.com/in/anisse-bouainbi/',
+    email: 'anissbouainbi@hotmail.it',
 };
 
 const features = [

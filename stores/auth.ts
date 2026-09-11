@@ -30,6 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (error) {
             console.error('AUTH::STORE::REGISTER');
             console.error(error);
+            throw error;
         }
     }
 
@@ -48,6 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (error) {
             console.error('AUTH::STORE::LOGIN');
             console.error(error);
+            throw error;
         }
     }
 
