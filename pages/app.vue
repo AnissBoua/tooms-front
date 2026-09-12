@@ -10,10 +10,10 @@
                 <span class="header-status mono">{{ status }}</span>
             </span>
             <div class="header-actions">
-                <button type="button" title="Audio call" aria-label="Audio call" class="pill" :class="{ active: inCall && !isVideoCall }" @click="startAudio">
+                <button type="button" title="Audio call" aria-label="Audio call" class="pill" :class="{ active: inCall && !isVideoCall }" :disabled="inCall" @click="startAudio">
                     <Icon name="tabler:phone" />
                 </button>
-                <button type="button" title="Video call" aria-label="Video call" class="pill" :class="{ active: inCall && isVideoCall }" @click="startVideo">
+                <button type="button" title="Video call" aria-label="Video call" class="pill" :class="{ active: inCall && isVideoCall }" :disabled="inCall" @click="startVideo">
                     <Icon name="tabler:video" />
                 </button>
                 <button type="button" title="Conversation details" aria-label="Conversation details" class="pill" :class="{ active: detailsOpen }" @click="detailsOpen = !detailsOpen">
@@ -29,19 +29,24 @@
                 <span class="mono call-timer">{{ callTimer }}</span>
             </div>
 
-            <div class="call-tiles">
-                <div v-for="remote in remoteStreams" :key="remote.stream.id" class="tile">
-                    <video v-if="remote.signal?.video" :srcObject="remote.stream" autoplay playsinline class="tile-video"></video>
-                    <div v-else class="tile-empty mono">
-                        <div class="tile-empty-title">[ audio only ]</div>
-                        <div>{{ remote.signal?.user ? remote.signal.user.name : title }}</div>
+            <div class="call-tiles" :class="{ 'has-focus': focusedTile }">
+                <div v-if="focusedTile" class="tile tile-large" @click="selectFocus(focusedTile)">
+                    <!-- Always mounted whenever there's a stream, even with no video to show - it's
+                         the only element bound to the stream, so it's what plays its audio track too.
+                         Hiding it with CSS (not v-if) when there's no video keeps that audio flowing. -->
+                    <video v-if="focusedTile.stream" :srcObject="focusedTile.stream" autoplay playsinline :muted="focusedTile.isSelf" class="tile-video" :class="{ 'video-hidden': !focusedTile.hasVideo }"></video>
+                    <div v-if="!focusedTile.hasVideo" class="tile-empty mono">
+                        <div class="tile-empty-title">[ {{ focusedTile.isSelf ? 'camera off' : 'audio only' }} ]</div>
+                        <div>{{ focusedTile.label }}</div>
                     </div>
                 </div>
-                <div class="tile">
-                    <video v-if="selfStream && rtc.video" :srcObject="selfStream.stream" autoplay playsinline muted class="tile-video"></video>
-                    <div v-else class="tile-empty mono">
-                        <div class="tile-empty-title">[ camera off ]</div>
-                        <div>you</div>
+                <div class="tile-grid" :class="{ strip: focusedTile }">
+                    <div v-for="t in (focusedTile ? tiles.filter(x => x.key !== focusedTile.key) : tiles)" :key="t.key" class="tile clickable" @click="selectFocus(t)">
+                        <video v-if="t.stream" :srcObject="t.stream" autoplay playsinline :muted="t.isSelf" class="tile-video" :class="{ 'video-hidden': !t.hasVideo }"></video>
+                        <div v-if="!t.hasVideo" class="tile-empty mono">
+                            <div class="tile-empty-title">[ {{ t.isSelf ? 'camera off' : 'audio only' }} ]</div>
+                            <div>{{ t.label }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -52,6 +57,9 @@
                 </button>
                 <button type="button" :title="camLabel" :aria-label="camLabel" class="pill" :class="{ active: rtc.video }" @click="toggleCam">
                     <Icon :name="rtc.video ? 'tabler:video' : 'tabler:video-off'" />
+                </button>
+                <button type="button" title="Share screen" aria-label="Share screen" class="pill" :class="{ active: rtc.screen }" @click="rtc.screen = !rtc.screen">
+                    <Icon :name="rtc.screen ? 'tabler:screen-share' : 'tabler:screen-share-off'" />
                 </button>
                 <button type="button" title="End call" aria-label="End call" class="pill pill-end" @click="endCall">
                     <Icon name="tabler:phone-off" />
@@ -67,10 +75,13 @@
                         <div v-if="row.kind === 'divider'" class="row-divider">
                             <span class="mono">{{ row.text }}</span>
                         </div>
+                        <div v-else-if="row.kind === 'event'" class="row-event">
+                            <span class="event-pill mono">{{ row.text }}</span>
+                        </div>
                         <div v-else class="row-bubble" :class="{ mine: isMine(row.message) }">
                             <div class="bubble" :class="{ mine: isMine(row.message) }">
                                 <div class="bubble-text">{{ row.message.content }}</div>
-                                <div class="bubble-meta mono">{{ formatTime(row.message.created_at) }}</div>
+                                <div class="bubble-meta mono">{{ formatTime(row.message.created_at) }}{{ isMine(row.message) && isFullyRead(row.message) ? ' · read' : '' }}</div>
                             </div>
                         </div>
                     </template>
@@ -103,7 +114,7 @@
                 <div class="details-head">
                     <span class="details-avatar">{{ initials }}</span>
                     <span class="details-name">{{ title }}</span>
-                    <span class="mono details-handle">{{ status }}</span>
+                    <span class="mono details-handle">{{ handle }}</span>
                 </div>
                 <div class="details-list">
                     <div class="details-eyebrow mono">Details</div>
@@ -130,29 +141,49 @@ const rtc = useWebRTCStore();
 
 const scrollRef = ref<HTMLElement | null>(null);
 const draftRef = ref<HTMLTextAreaElement | null>(null);
-const scroll = ref<number>(0);
 const touchX = ref<number>(0);
 const draft = ref<string>('');
 const detailsOpen = ref(false);
 const seconds = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
 
-watch(() => store.conversation, (conversation) => {
+watch(() => store.conversation, async (conversation) => {
     if (!conversation) return;
-    if (!conversation.messages.length) {
-        store.messages(conversation.page);
+
+    const detailsPromise = store.one(conversation.id);
+
+    // `loaded`, not messages.length - a message can arrive live and already be in the array
+    // before the conversation has ever actually been opened/fetched.
+    if (!conversation.loaded) {
+        const [, fresh] = await Promise.all([store.messages(conversation.page), detailsPromise]);
+        if (fresh && store.conversation?.id === conversation.id) {
+            store.conversation.created_at = fresh.created_at;
+            store.conversation.messageCount = fresh.messageCount;
+            store.conversation.callCount = fresh.callCount;
+            store.conversation.calls = fresh.calls;
+        }
+        await nextTick();
+        if (scrollRef.value) scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+        return;
     }
-});
+
+    const fresh = await detailsPromise;
+    if (fresh && store.conversation?.id === conversation.id) {
+        store.conversation.created_at = fresh.created_at;
+        store.conversation.messageCount = fresh.messageCount;
+        store.conversation.callCount = fresh.callCount;
+        store.conversation.calls = fresh.calls;
+    }
+}, { immediate: true });
 
 watch(() => store.conversation?.messages, async (list) => {
     if (!list) return;
+    if (store.conversation) store.markRead(store.conversation.id);
     if (!scrollRef.value) return;
-    await nextTick();
     const el = scrollRef.value;
-    if (el.scrollTop + el.clientHeight >= scroll.value - 40) {
-        el.scrollTop = el.scrollHeight;
-    }
-    scroll.value = el.scrollHeight;
+    const wasNearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 120;
+    await nextTick();
+    if (wasNearBottom) el.scrollTop = el.scrollHeight;
 }, { deep: true });
 
 watch(() => rtc.stream, (stream) => {
@@ -191,8 +222,18 @@ const initials = computed(() => {
     return store.initials(other.value);
 });
 
-// There's no presence/online tracking yet (TODO) - fall back to something real instead of faking status.
 const status = computed(() => {
+    if (!store.conversation || !auth.user) return '';
+    const notMe = store.conversation.participants.filter(p => p.id !== auth.user!.id);
+    if (isGroup.value) {
+        const onlineCount = notMe.filter(p => ws.online.has(p.id)).length;
+        return store.conversation.participants.length + ' participants' + (onlineCount ? ' · ' + onlineCount + ' online' : '');
+    }
+    return other.value && ws.online.has(other.value.id) ? 'online' : 'offline';
+});
+
+// Stable identifier for the details panel (as opposed to `status`, which is presence).
+const handle = computed(() => {
     if (isGroup.value) return (store.conversation?.participants.length ?? 0) + ' participants';
     return other.value?.email ?? '';
 });
@@ -200,10 +241,29 @@ const status = computed(() => {
 const details = computed(() => {
     const rows: { k: string; v: string }[] = [{ k: 'type', v: isGroup.value ? 'group' : 'direct' }];
     if (isGroup.value) rows.push({ k: 'participants', v: String(store.conversation?.participants.length ?? 0) });
+    if (store.conversation?.created_at) {
+        rows.push({ k: isGroup.value ? 'created' : 'contact since', v: dayjs(store.conversation.created_at).format('MMM YYYY') });
+    }
+    if (store.conversation?.messageCount !== undefined) rows.push({ k: 'messages', v: String(store.conversation.messageCount) });
+    if (store.conversation?.callCount !== undefined) rows.push({ k: 'calls', v: String(store.conversation.callCount) });
     return rows;
 });
 
 const isMine = (message?: Message) => !!message && !!auth.user && message.user.id === auth.user.id;
+
+// "Read" here means every other participant has read up to this message - simplest
+// convention that also works for groups.
+const isFullyRead = (message?: Message) => {
+    if (!message || !store.conversation) return false;
+    const others = store.conversation.participants.filter(p => p.id !== message.user.id);
+    if (!others.length) return false;
+    const receipts = store.conversation.readReceipts ?? [];
+    const at = new Date(message.created_at).getTime();
+    return others.every(o => {
+        const receipt = receipts.find(r => r.user === o.id);
+        return !!receipt && new Date(receipt.last_read_at).getTime() >= at;
+    });
+};
 
 const formatTime = (iso: string) => dayjs(iso).format('HH:mm');
 
@@ -216,17 +276,37 @@ const dividerLabel = (iso: string) => {
     return d.format('D MMMM YYYY');
 };
 
+const formatDuration = (start: string, end: string) => {
+    const seconds = Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000));
+    const mm = Math.floor(seconds / 60);
+    const ss = seconds % 60;
+    return mm > 0 ? mm + 'm ' + ss.toString().padStart(2, '0') + 's' : ss + 's';
+};
+
 const rows = computed(() => {
     const messages = store.conversation?.messages ?? [];
-    const out: { key: string; kind: 'divider' | 'bubble'; text?: string; message?: Message }[] = [];
+    const calls = (store.conversation?.calls ?? []).filter(c => c.ended_at);
+
+    const items: { at: string; key: string; kind: 'bubble' | 'event'; message?: Message; text?: string }[] = [
+        ...messages.map(m => ({ at: m.created_at, key: 'msg-' + m.id, kind: 'bubble' as const, message: m })),
+        ...calls.map(c => {
+            const label = c.type === 'video' ? 'Video call' : 'Audio call';
+            const text = c.connected ? label + ' · ' + formatDuration(c.started_at, c.ended_at!) : 'Missed ' + label.toLowerCase();
+            return { at: c.ended_at!, key: 'call-' + c.id, kind: 'event' as const, text };
+        }),
+    ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+    const out: { key: string; kind: 'divider' | 'bubble' | 'event'; text?: string; message?: Message }[] = [];
     let lastDay: string | null = null;
-    for (const m of messages) {
-        const day = dayjs(m.created_at).format('YYYY-MM-DD');
+    for (const item of items) {
+        const day = dayjs(item.at).format('YYYY-MM-DD');
         if (day !== lastDay) {
-            out.push({ key: 'divider-' + day, kind: 'divider', text: dividerLabel(m.created_at) });
+            out.push({ key: 'divider-' + day, kind: 'divider', text: dividerLabel(item.at) });
             lastDay = day;
         }
-        out.push({ key: 'msg-' + m.id, kind: 'bubble', message: m });
+        out.push(item.kind === 'bubble'
+            ? { key: item.key, kind: 'bubble', message: item.message }
+            : { key: item.key, kind: 'event', text: item.text });
     }
     return out;
 });
@@ -235,7 +315,42 @@ const rows = computed(() => {
 const inCall = computed(() => rtc.streams.length > 0);
 const isVideoCall = computed(() => rtc.video);
 const remoteStreams = computed<RTCStream[]>(() => rtc.streams.filter(s => !auth.user || s.signal?.user?.id !== auth.user.id));
-const selfStream = computed<RTCStream | undefined>(() => rtc.streams.find(s => auth.user && s.signal?.user?.id === auth.user.id));
+// A user can have more than one stream attributed to them at once (camera + screen share),
+// so this has to collect all matches, not just the first.
+const selfStreams = computed<RTCStream[]>(() => rtc.streams.filter(s => auth.user && s.signal?.user?.id === auth.user.id));
+
+type Tile = { key: string; isSelf: boolean; stream: MediaStream | null; hasVideo: boolean; label: string };
+
+const tiles = computed<Tile[]>(() => {
+    const remotes: Tile[] = remoteStreams.value.map(r => ({
+        key: r.stream.id,
+        isSelf: false,
+        stream: r.stream,
+        hasVideo: !!r.signal?.video,
+        label: r.signal?.screen ? (r.signal?.user ? r.signal.user.name + "'s screen" : 'screen share') : (r.signal?.user ? r.signal.user.name : firstName.value),
+    }));
+    const self: Tile[] = selfStreams.value.map(s => ({
+        key: s.stream.id,
+        isSelf: true,
+        stream: s.stream,
+        hasVideo: s.signal?.screen ? true : rtc.video,
+        label: s.signal?.screen ? 'your screen' : 'you',
+    }));
+    return [...remotes, ...self];
+});
+
+// Discord-style spotlight: click any tile to feature it large, always available (1:1 calls
+// included) rather than only once there are 3+ tiles.
+const focusKey = ref<string | null>(null);
+const focusedTile = computed(() => tiles.value.find(t => t.key === focusKey.value) ?? null);
+
+watch(tiles, (list) => {
+    if (focusKey.value && !list.some(t => t.key === focusKey.value)) focusKey.value = null;
+});
+
+const selectFocus = (tile: Tile) => {
+    focusKey.value = focusKey.value === tile.key ? null : tile.key;
+}
 
 const callLabel = computed(() => (isVideoCall.value ? 'Video call' : 'Audio call') + ' with ' + firstName.value);
 const callTimer = computed(() => {
@@ -249,6 +364,7 @@ const camLabel = computed(() => rtc.video ? 'Turn camera off' : 'Turn camera on'
 watch(inCall, (value) => {
     if (timer) clearInterval(timer);
     seconds.value = 0;
+    focusKey.value = null;
     if (value) timer = setInterval(() => seconds.value++, 1000);
 });
 
@@ -256,8 +372,8 @@ onUnmounted(() => {
     if (timer) clearInterval(timer);
 });
 
-const startAudio = () => rtc.init({ audio: true, video: false });
-const startVideo = () => rtc.init({ audio: true, video: true });
+const startAudio = () => { if (!inCall.value) rtc.init({ audio: true, video: false }); };
+const startVideo = () => { if (!inCall.value) rtc.init({ audio: true, video: true }); };
 const endCall = () => rtc.hangout();
 
 const toggleMic = () => {
@@ -302,7 +418,6 @@ const send = () => {
         conversation: store.conversation,
     };
     store.addMessage(msg);
-    store.updatePreview(msg);
     ws.send(content);
 
     draft.value = '';
@@ -439,6 +554,16 @@ const touchend = (e: TouchEvent) => {
     color: white;
 }
 
+.pill:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.pill:disabled:hover {
+    border-color: var(--border-strong);
+    color: var(--text-dim);
+}
+
 .pill.active {
     border-color: var(--accent-soft-strong-border);
     background: var(--accent-soft-strong);
@@ -494,14 +619,32 @@ const touchend = (e: TouchEvent) => {
 
 .call-tiles {
     flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.call-tiles.has-focus {
+    max-height: 320px;
+}
+
+.tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, 200px);
+    justify-content: center;
     gap: 12px;
-    overflow: hidden;
+}
+
+.tile-grid.strip {
+    grid-template-columns: repeat(auto-fit, 120px);
+    gap: 8px;
 }
 
 .tile {
-    height: clamp(96px, 19vh, 196px);
+    width: 200px;
+    aspect-ratio: 16 / 9;
     border-radius: 12px;
     border: 1px solid var(--border-strong);
     display: grid;
@@ -510,10 +653,31 @@ const touchend = (e: TouchEvent) => {
     overflow: hidden;
 }
 
+.tile.clickable {
+    cursor: pointer;
+}
+
+.tile-grid.strip .tile {
+    width: 120px;
+}
+
+.tile-large {
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    cursor: pointer;
+}
+
 .tile-video {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* display: none (not v-if) - the element stays mounted so its stream's audio track keeps
+   playing even with no video to show; only the visual frame is hidden. */
+.tile-video.video-hidden {
+    display: none;
 }
 
 .tile-empty {
@@ -578,6 +742,20 @@ const touchend = (e: TouchEvent) => {
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-dimmer);
+}
+
+.row-event {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.event-pill {
+    font-size: 11px;
+    color: var(--accent-text);
+    border: 1px solid oklch(0.30 0.04 292);
+    border-radius: 99px;
+    padding: 5px 13px;
 }
 
 .row-bubble {

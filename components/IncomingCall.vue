@@ -1,29 +1,27 @@
 <template>
-    <div class="bg-neutral-950 rounded-lg ring-1 ring-neutral-800/50 space-y-2 my-4">
-        <div class="space-y-4 py-4">
-            <div class="flex flex-col items-center">
-                <p>{{ signal.user.name + ' ' + signal.user.lastname }}</p>
-                <p class="text-xs text-neutral-400">En cours d'appel...</p>
-            </div>
-            <div class="flex justify-center space-x-4">
-                <div @click="video = !video" class="flex items-center justify-center bg-neutral-800 rounded-full cursor-pointer text-neutral-400 hover:bg-neutral-700 hover:text-neutral-300 p-4" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': video }">
-                    <Icon name="solar:camera-outline" class="text-2xl" />
-                </div>
-                <div @click="audio = !audio" class="flex items-center justify-center bg-neutral-800 rounded-full cursor-pointer text-neutral-400 hover:bg-neutral-700 hover:text-neutral-300 p-4" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': audio }">
-                    <Icon name="solar:microphone-3-linear" class="text-2xl" />
-                </div>
+    <div class="incoming">
+        <div class="incoming-body">
+            <span class="incoming-avatar">{{ initials }}</span>
+            <span class="incoming-name">{{ signal.user.name }} {{ signal.user.lastname }}</span>
+            <span class="incoming-sub mono">Incoming call…</span>
+            <div class="incoming-toggles">
+                <button type="button" title="Answer with camera on" aria-label="Answer with camera on" class="pill" :class="{ active: video }" @click="video = !video">
+                    <Icon name="tabler:video" />
+                </button>
+                <button type="button" title="Answer with microphone on" aria-label="Answer with microphone on" class="pill" :class="{ active: audio }" @click="audio = !audio">
+                    <Icon name="tabler:microphone" />
+                </button>
             </div>
         </div>
-        <div class="w-full h-px bg-neutral-800"></div>
-        <div class="flex space-x-6 px-8 py-4">
-            <div @click="refuse()" class="w-1/2 flex items-center justify-center bg-red-600 hover:bg-red-700 rounded-md cursor-pointer space-x-2 px-10 py-1">
-                <Icon name="solar:end-call-linear" class="text-3xl" />
-                <p>Refuser</p>
-            </div>
-            <div @click="accept()" class="w-1/2 flex items-center justify-center bg-green-600 hover:bg-green-700 rounded-md cursor-pointer space-x-2 px-10 py-1">
-                <Icon name="line-md:phone-call-loop" class="text-2xl" />
-                <p>Accepter</p>
-            </div>
+        <div class="incoming-actions">
+            <button type="button" class="action-btn decline" @click="refuse">
+                <Icon name="tabler:phone-off" />
+                <span>Decline</span>
+            </button>
+            <button type="button" class="action-btn accept" @click="accept">
+                <Icon name="tabler:phone" />
+                <span>Accept</span>
+            </button>
         </div>
     </div>
 </template>
@@ -36,6 +34,9 @@ const props = defineProps<{
 }>();
 
 const rtc = useWebRTCStore();
+const store = useConversationStore();
+
+const initials = computed(() => store.initials(props.signal.user));
 
 const video = ref<boolean>(false);
 const audio = ref<boolean>(false);
@@ -55,7 +56,7 @@ const accept = () => {
     rtc.ringtone = true;
     ringtone.value.pause();
     ringtone.value.currentTime = 0;
-  
+
     rtc.offer(props.signal, { audio: audio.value, video: video.value });
     rtc.call = null;
     emit('close');
@@ -65,9 +66,127 @@ const refuse = () => {
     ringtone.value.pause();
     ringtone.value.currentTime = 0;
 
-    console.log('Refusing call');
     rtc.refuse(props.signal);
     emit('close');
 };
-
 </script>
+
+<style scoped>
+.incoming {
+    width: 300px;
+    margin: 16px auto 0;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    overflow: hidden;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    color: var(--text);
+    box-shadow: 0 20px 40px oklch(0 0 0 / 0.45);
+}
+
+.mono {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.incoming-body {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 24px 20px 20px;
+}
+
+.incoming-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 99px;
+    background: var(--accent-soft-strong);
+    border: 1px solid var(--accent-soft-strong-border);
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent-text);
+}
+
+.incoming-name {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.incoming-sub {
+    font-size: 11px;
+    color: var(--text-dimmer);
+}
+
+.incoming-toggles {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.pill {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 18px;
+}
+
+.pill:hover {
+    border-color: var(--accent);
+    color: white;
+}
+
+.pill.active {
+    border-color: var(--accent-soft-strong-border);
+    background: var(--accent-soft-strong);
+    color: var(--accent-text);
+}
+
+.incoming-actions {
+    display: flex;
+    border-top: 1px solid var(--border);
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+}
+
+.action-btn:first-child {
+    border-right: 1px solid var(--border);
+}
+
+.action-btn.decline {
+    color: oklch(0.72 0.17 25);
+}
+
+.action-btn.decline:hover {
+    background: oklch(0.24 0.05 25);
+}
+
+.action-btn.accept {
+    color: oklch(0.72 0.16 150);
+}
+
+.action-btn.accept:hover {
+    background: oklch(0.20 0.05 150);
+}
+</style>

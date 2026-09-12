@@ -31,6 +31,10 @@
             <div v-if="search && !contacts.length" class="empty-hint mono">No one found for "{{ search }}".</div>
         </div>
 
+        <div v-if="selected.length > 1" class="panel-group-name">
+            <input v-model="groupName" type="text" placeholder="Group name (optional)" class="group-name-input" />
+        </div>
+
         <div class="panel-foot">
             <span class="mono panel-foot-hint">search by name or email</span>
             <button type="button" class="create-btn" :disabled="!selected.length" @click="createConversation">{{ createLabel }}</button>
@@ -42,11 +46,13 @@
 import type { User } from '~/types/user';
 
 const store = useConversationStore();
+const ws = useWebSocketStore();
 const search = ref('');
 const contacts = ref<User[]>([]);
 const timer = ref<ReturnType<typeof setTimeout> | null>(null);
 
 const selected = ref<User[]>([]);
+const groupName = ref('');
 
 const emit = defineEmits(['close']);
 
@@ -64,11 +70,10 @@ const toggle = (contact: User) => {
     else selected.value = selected.value.concat([contact]);
 }
 
-// Real signal only: whether a direct (1:1) conversation with this contact already exists.
-// The design's mock also showed online/offline here, but there's no presence data yet (TODO).
 const note = (contact: User) => {
     const existing = store.conversations.find(c => c.participants.length === 2 && c.participants.some(p => p.id === contact.id));
-    return existing ? 'existing conversation' : contact.email;
+    if (existing) return 'existing conversation';
+    return ws.online.has(contact.id) ? 'online' : 'offline';
 }
 
 const pickedLabel = computed(() => {
@@ -93,7 +98,7 @@ const createConversation = async () => {
         }
     }
 
-    const created = await store.create({ users: selected.value });
+    const created = await store.create({ name: selected.value.length > 1 ? groupName.value.trim() : undefined, users: selected.value });
     if (created) {
         store.conversation = created;
         store.mobile = true;
@@ -214,6 +219,32 @@ const close = () => {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.panel-group-name {
+    flex: none;
+    padding: 0 20px 12px;
+}
+
+.group-name-input {
+    font-family: inherit;
+    font-size: 13.5px;
+    width: 100%;
+    box-sizing: border-box;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+}
+
+.group-name-input:focus {
+    border-color: var(--accent);
+}
+
+.group-name-input::placeholder {
+    color: oklch(0.52 0.012 285);
 }
 
 .empty-hint {

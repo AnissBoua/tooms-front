@@ -15,6 +15,7 @@ export const useWebSocketStore = defineStore('ws', () => {
     const conversation = useConversationStore();
     const rtc = useWebRTCStore();
     const status = ref<'disconnected' | 'connected' | 'authenticated'>('disconnected');
+    const online = ref<Set<number>>(new Set());
 
     async function init() {
         if (!socket.value) {
@@ -36,6 +37,7 @@ export const useWebSocketStore = defineStore('ws', () => {
             console.log("Disconnected from WebSocket server");
             status.value = 'disconnected';
             socket.value = null;
+            online.value = new Set();
         });
 
         socket.value.on("error", (error: any) => {
@@ -50,12 +52,24 @@ export const useWebSocketStore = defineStore('ws', () => {
         socket.value.on("message", (data: Message) => {
             console.log("Received message:", data);
 
-            conversation.updatePreview(data);
+            const isMine = !!auth.user && data.user.id === auth.user.id;
+            const isOpen = conversation.conversation?.id === data.conversation.id;
+            // Applies to the conversation's message list (open or not) and its sidebar preview.
+            conversation.receiveMessage(data, !isMine && !isOpen);
+        });
 
-            if (!conversation.conversation) return;
-            if (data.conversation.id !== conversation.conversation.id) return;
+        socket.value.on("read", (data: { conversation: number; user: number; at: string }) => {
+            conversation.applyRead(data.conversation, data.user, data.at);
+        });
 
-            conversation.addMessage(data);
+        socket.value.on("presence-snapshot", (ids: number[]) => {
+            online.value = new Set(ids);
+        });
+
+        socket.value.on("presence", (data: { user: number; online: boolean }) => {
+            const next = new Set(online.value);
+            if (data.online) next.add(data.user); else next.delete(data.user);
+            online.value = next;
         });
 
         socket.value.on("call", (signal: RTCSignal) => {
@@ -64,6 +78,10 @@ export const useWebSocketStore = defineStore('ws', () => {
 
         socket.value.on("refuse", (signal: RTCSignal) => {
             rtc.refused(signal);
+        });
+
+        socket.value.on("hangout", (data: { user: number; conversation: number }) => {
+            rtc.peerleft(data.user);
         });
 
         socket.value.on("multi-call", (users: number[]) => {
@@ -96,6 +114,7 @@ export const useWebSocketStore = defineStore('ws', () => {
     }
 
     function logout() {
+        online.value = new Set();
         if (!socket.value) return;
         socket.value.disconnect();
         socket.value = null;
@@ -123,6 +142,7 @@ export const useWebSocketStore = defineStore('ws', () => {
     return {
         socket,
         status,
+        online,
         init,
         logout,
         send,

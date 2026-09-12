@@ -1,6 +1,9 @@
 <template>
     <button type="button" @click="select" class="row" :class="{ active: isSelected }">
-        <span class="avatar" :class="{ active: isSelected }">{{ initials }}</span>
+        <span class="avatar-wrap">
+            <span class="avatar" :class="{ active: isSelected }">{{ initials }}</span>
+            <span v-if="isOnline" class="online-dot"></span>
+        </span>
         <span class="body">
             <span class="line1">
                 <span class="name">{{ conversation.name || name() }}</span>
@@ -8,6 +11,7 @@
             </span>
             <span class="line2">
                 <span class="preview">{{ preview }}</span>
+                <span v-if="conversation.unread" class="unread mono">{{ conversation.unread }}</span>
             </span>
         </span>
     </button>
@@ -22,6 +26,7 @@ const props = defineProps<{
 }>();
 const auth = useAuthStore();
 const store = useConversationStore();
+const ws = useWebSocketStore();
 
 const isSelected = computed<boolean>(() => {
     return store.conversation?.id === props.conversation.id;
@@ -34,6 +39,13 @@ const other = computed(() => {
     const id = auth.user.id;
     const notMe = props.conversation.participants.filter((participant) => participant.id !== id);
     return notMe[0] ?? null;
+});
+
+// Direct: the other person is online. Group: at least one other participant is.
+const isOnline = computed(() => {
+    if (!auth.user) return false;
+    const notMe = props.conversation.participants.filter((p) => p.id !== auth.user!.id);
+    return notMe.some((p) => ws.online.has(p.id));
 });
 
 const initials = computed(() => {
@@ -111,8 +123,12 @@ const select = () => {
     background: oklch(0.235 0.03 291);
 }
 
-.avatar {
+.avatar-wrap {
+    position: relative;
     flex: none;
+}
+
+.avatar {
     width: 38px;
     height: 38px;
     border-radius: 99px;
@@ -129,6 +145,17 @@ const select = () => {
     background: var(--accent-soft-strong);
     border-color: var(--accent-soft-strong-border);
     color: var(--accent-text);
+}
+
+.online-dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 99px;
+    background: oklch(0.72 0.16 150);
+    border: 2px solid var(--bg-alt);
 }
 
 .body {
@@ -175,5 +202,20 @@ const select = () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.unread {
+    margin-left: auto;
+    flex: none;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border-radius: 99px;
+    background: var(--accent);
+    color: white;
+    font-size: 10.5px;
+    display: grid;
+    place-items: center;
 }
 </style>
