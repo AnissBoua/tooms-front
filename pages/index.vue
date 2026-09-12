@@ -1,360 +1,815 @@
 <template>
-    <div v-if="store.conversation" class="relative min-h-screen max-h-screen h-screen flex flex-col overflow-x-scroll" @touchstart="touchstart" @touchend="touchend">
-        <div class="flex items-center justify-between border-b border-neutral-800 p-2 md:p-4">
-            <div class="flex items-center space-x-2 md:space-x-4 overflow-hidden text-ellipsis whitespace-nowrap">
-                <div @click="store.mobile = false" class="flex md:hidden items-center space-x-2 cursor-pointer">
-                    <Icon name="material-symbols:chevron-left-rounded" class="text-2xl" />
+    <div class="home">
+        <header class="home-header">
+            <div class="home-header-inner">
+                <div class="home-brand">
+                    <div class="home-logo">t</div>
+                    <span class="home-brand-name">Tooms</span>
                 </div>
-                <div v-if="user" class="flex items-center justify-center w-10 h-10 bg-violet-800/50 rounded-full text-violet-300"> {{ store.initials(user) }} </div>
-                <p class="overflow-hidden text-ellipsis whitespace-nowrap"> {{ store.conversation.name || name() }} </p>
+                <nav class="home-nav">
+                    <a href="#features">Features</a>
+                    <a href="#demo">Demo access</a>
+                    <a href="#stack">Stack</a>
+                    <a href="#about">About</a>
+                </nav>
+                <div class="home-header-actions">
+                    <NuxtLink to="/auth/login" class="btn btn-ghost">Log in</NuxtLink>
+                    <a href="#demo" class="btn btn-primary">Try the demo</a>
+                </div>
             </div>
-            <div class="flex flex-no-wrap space-x-4 md:space-x-6">
-                <Icon @click="visiocall" name="solar:camera-outline" class="text-3xl hover:text-violet-600 cursor-pointer" />
-                <Icon @click="audiocall" name="line-md:phone" class="text-3xl hover:text-violet-600 cursor-pointer" />
+        </header>
+
+        <section class="home-hero">
+            <div>
+                <div class="badge">
+                    <span class="badge-dot"></span>
+                    Personal project — not a commercial product
+                </div>
+                <h1 class="home-h1">Chat, calls and video<br />in one place.</h1>
+                <p class="home-lead">Tooms is a self-built team communication app: real-time messaging, one-to-one and group conversations, audio calls and video calls. I built it to practice full-stack architecture, WebSockets and WebRTC end to end.</p>
+                <div class="home-hero-actions">
+                    <a href="#demo" class="btn btn-primary">Try the demo</a>
+                    <a :href="links.github" target="_blank" rel="noopener" class="btn btn-secondary">View source on GitHub</a>
+                </div>
+                <p class="mono-note">No signup needed — two demo accounts are provided below.</p>
             </div>
-        </div>
-        <div v-if="rtc.streams.length" class="absolute flex flex-col w-full bg-neutral-900" >
-            <div v-if="focus" @click="focus = null" class="w-full h-full flex flex-1 items-center justify-center space-x-4 p-4 my-4" ref="RFocus">
-                <div class="flex aspect-video">
-                    <video v-if="focus.signal?.video" id="focus-stream" :srcObject="focus.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
-                    </video>
-                    <div v-else class="flex items-center justify-center w-full bg-neutral-800 rounded-xl">
-                        <div v-if="focus.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(focus.signal?.user) }} </div>
+
+            <div class="home-shot-wrap">
+                <div class="home-shot-glow"></div>
+                <div class="home-shot">
+                    <div class="home-shot-bar">
+                        <span></span><span></span><span></span>
+                        <span class="home-shot-title">tooms — conversation</span>
+                    </div>
+                    <div class="home-shot-canvas">
+                        <div class="home-shot-caption">
+                            <div class="home-shot-caption-title">[ product shot ]</div>
+                            <div>chat window with active video call</div>
+                            <div class="dim">1440 × 1080 · drop a screenshot here</div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div v-else ref="videos" class="flex overflow-y-scroll custom-scrollbar my-4">
-                <div id="videos-container" class="w-full h-full grid gap-4 items-center justify-center p-4 my-auto" :class="{'hidden': focus}" 
-                    :style="{
-                        'grid-template-columns': $device.isMobileOrTablet ? '1fr' : 'repeat(' + Math.min(rtc.streams.length, 2) + ', 1fr)',
-                    }">
-                    <template v-for="(stream, index) of rtc.streams" :key="stream.stream.id">
-                        <div class="flex items-center aspect-video" :class="{
-                            'justify-self-center': rtc.streams.length == 1,
-                            'justify-self-center md:justify-self-end': rtc.streams.length > 1 && index % 2 === 0,
-                            'justify-self-center md:justify-self-start': rtc.streams.length > 1 && index % 2 === 1
-                        }" @click="focusstream(stream)" :id="stream.stream.id">
-                            <video v-if="stream.signal?.video" @loadedmetadata="onmetadata(stream.stream.id)" :srcObject="stream.stream" class="w-full h-full rounded-xl overflow-hidden object-cover" autoplay playsinline >
-                            </video>
-                            <div v-else class="w-full h-full flex items-center justify-center bg-neutral-800 rounded-xl">
-                                <audio v-if="stream.signal?.audio" :srcObject="stream.stream" autoplay playsinline ></audio>
-                                <div v-if="stream.signal?.user" class="flex items-center justify-center w-16 h-16 bg-violet-800/50 rounded-full text-xl text-violet-300"> {{ store.initials(stream.signal.user) }} </div>
+        </section>
+
+        <section id="features" class="home-section home-section-alt">
+            <div class="home-container">
+                <h2 class="eyebrow">What it does</h2>
+                <div class="feature-grid">
+                    <div v-for="f in features" :key="f.title" class="feature-card">
+                        <div class="feature-icon"></div>
+                        <h3>{{ f.title }}</h3>
+                        <p>{{ f.body }}</p>
+                        <div class="mono-meta">{{ f.meta }}</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="home-section">
+            <div class="home-container demo-grid">
+                <div>
+                    <h2 class="eyebrow">Demo access</h2>
+                    <h3 class="home-h3">Two accounts, so you can talk to yourself.</h3>
+                    <p class="home-p">Messaging and calls need two people. Rather than asking you to register twice, two accounts are pre-configured and already in each other's contacts.</p>
+                    <ol class="demo-steps">
+                        <li>Log in as Ana in your normal window.</li>
+                        <li>Log in as Ben in a private window or a second browser.</li>
+                        <li>Start a conversation, then place a video call between them.</li>
+                    </ol>
+                    <p class="mono-note mono-note-loose">Demo accounts are seeded ahead of time. Camera and microphone permission is required for calls.</p>
+                </div>
+
+                <div class="demo-accounts">
+                    <div v-for="a in demoAccounts" :key="a.id" class="demo-card">
+                        <div class="demo-card-head">
+                            <div class="demo-avatar">{{ a.initials }}</div>
+                            <div>
+                                <div class="demo-name">{{ a.name }}</div>
+                                <div class="mono-meta">{{ a.role }}</div>
+                            </div>
+                            <NuxtLink to="/auth/login" class="btn btn-accent demo-cta">Log in as {{ a.name.split(' ')[0] }}</NuxtLink>
+                        </div>
+                        <div class="demo-fields">
+                            <div class="demo-field">
+                                <span class="demo-field-label">email</span>
+                                <span class="demo-field-value">{{ a.email }}</span>
+                                <button type="button" class="copy-btn" @click="copy(a.id + '-email', a.email)">{{ copied === a.id + '-email' ? 'copied' : 'copy' }}</button>
+                            </div>
+                            <div class="demo-field">
+                                <span class="demo-field-label">password</span>
+                                <span class="demo-field-value">{{ a.password }}</span>
+                                <button type="button" class="copy-btn" @click="copy(a.id + '-pw', a.password)">{{ copied === a.id + '-pw' ? 'copied' : 'copy' }}</button>
                             </div>
                         </div>
-                    </template>
-                </div>
-            </div>
-            <div class="relative flex items-center justify-center w-full mb-4">
-                <div class="flex items-center bg-neutral-800 rounded-lg space-x-4 px-6 py-2">
-                    <div @click="togglevideo" class="flex items-center justify-center bg-neutral-700 rounded-full cursor-pointer text-neutral-300 hover:bg-neutral-600 hover:text-neutral-200 p-3" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': rtc.video }">
-                        <Icon name="solar:camera-outline" class="text-2xl" />
                     </div>
-                    <div @click="toggleaudio" class="flex items-center justify-center bg-neutral-700 rounded-full cursor-pointer text-neutral-300 hover:bg-neutral-600 hover:text-neutral-200 p-3" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': rtc.audio }">
-                        <Icon name="solar:microphone-3-linear" class="text-2xl" />
-                    </div>
-                    <div v-if="!$device.isMobileOrTablet" @click="togglescreenshare" class="flex items-center justify-center bg-neutral-700 rounded-full cursor-pointer text-neutral-300 hover:bg-neutral-600 hover:text-neutral-200 p-3" :class="{ 'bg-violet-800 text-violet-300 hover:bg-violet-700 hovertext-violet-200': rtc.screen }">
-                        <Icon name="ph:monitor-arrow-up" class="text-2xl" />
-                    </div>
-                    <div @click="hangout" class="flex items-center justify-center bg-red-700 rounded-full cursor-pointer text-neutral-300 hover:bg-red-600 hover:text-neutral-200 p-3">
-                        <Icon name="solar:end-call-linear" class="text-2xl" />
+                    <div class="demo-own">
+                        <span>Prefer your own account?</span>
+                        <NuxtLink to="/auth/signup">Create one in 20 seconds →</NuxtLink>
                     </div>
                 </div>
             </div>
-            <div class="relative w-full h-4 flex items-center justify-center cursor-row-resize" @mousedown="resize">
-                <div class="absolute bottom-0 w-full h-px bg-neutral-700"></div>
-                <div class="absolute top-1/2 -translate-y-1/3 z-10 flex items-center justify-center w-10 h-10 bg-neutral-800 rounded-full text-neutral-400">
-                    <Icon name="hugeicons:vertical-resize" class="text-2xl text-neutral-400" />
+        </section>
+
+        <section id="stack" class="home-section home-section-alt">
+            <div class="home-container stack-grid">
+                <div>
+                    <h2 class="eyebrow">Under the hood</h2>
+                    <h3 class="home-h3 home-h3-tight">Built end to end, front to database.</h3>
+                    <p class="home-p">Relational schema around users, conversations and messages, with many-to-many contacts and participants. Real-time transport over WebSockets, peer-to-peer media over WebRTC.</p>
+                </div>
+                <div>
+                    <div class="stack-tags">
+                        <span v-for="s in stack" :key="s" class="stack-tag">{{ s }}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="flex flex-1 flex-col-reverse overflow-y-scroll custom-scrollbar" @scroll="scrolling()" ref="scrollRef">
-            <div class="space-y-6 p-2" ref="messages">
-                <template v-for="(msg, index) in store.conversation.messages" :key="msg.id">
-                    <Message :message="msg" :prev_user="prev_user(index)" />
-                </template>
+        </section>
+
+        <section id="about" class="home-section">
+            <div class="home-container">
+                <h2 class="eyebrow">About the project</h2>
+                <p class="about-lead">I'm a developer, and Tooms is my own side project — no team, no company behind it. The first version was all about getting the functionality right: authentication, persistent conversations, live message delivery and peer-to-peer calls.</p>
+                <p class="home-p about-p">It's here so recruiters can look at working code and a running app rather than a list of technologies on a CV. Everything is open source, and I'm happy to walk through any part of it.</p>
+                <div class="about-actions">
+                    <a :href="links.github" target="_blank" rel="noopener" class="btn btn-secondary">Read the code</a>
+                    <a :href="'mailto:' + links.email" class="btn btn-secondary">Get in touch</a>
+                </div>
             </div>
-        </div>
-        <div class="flex space-x-4 p-2">
-            <Input @update:input="message = $event" @enter="send" :input="message" name="message" id="message" placeholder="Your message" icon="solar:chat-round-outline" />
-            <Button @click="send" class="flex items-center justify-center !w-20 !p-0"><Icon name="lets-icons:send-light" class="text-3xl" /></Button>
-        </div>
+        </section>
+
+        <footer class="home-footer">
+            <div class="home-container home-footer-inner">
+                <div class="home-brand">
+                    <div class="home-logo home-logo-sm">t</div>
+                    <span class="mono-meta">Tooms — personal project, {{ year }}</span>
+                </div>
+                <div class="home-footer-links">
+                    <a :href="links.github" target="_blank" rel="noopener">GitHub</a>
+                    <a v-if="links.linkedin" :href="links.linkedin" target="_blank" rel="noopener">LinkedIn</a>
+                    <a :href="'mailto:' + links.email">{{ links.email }}</a>
+                </div>
+            </div>
+        </footer>
     </div>
 </template>
 
 <script setup lang="ts">
-import type { Message } from '~/types/message';
-import type { RTCStream } from '~/types/WebRTC/RTCStream';
+useHead({
+    title: 'Tooms — chat, calls and video in one place',
+    meta: [
+        { name: 'description', content: 'Tooms is a self-built team communication app: real-time messaging, calls and video, built end to end as a personal project.' },
+    ],
+});
 
 const auth = useAuthStore();
-const store = useConversationStore();
-const ws = useWebSocketStore();
-const rtc = useWebRTCStore();
 
-const scroll = ref<number>(0);
-const scrollRef = ref<HTMLElement | null>(null);
+const links = {
+    github: 'https://github.com/AnissBoua',
+    linkedin: 'https://www.linkedin.com/in/anisse-bouainbi/',
+    email: 'anissbouainbi@hotmail.it',
+};
 
-const touchX = ref<number>(0);
+const features = [
+    { title: 'Messaging', body: "One-to-one and group conversations with persisted history, delivered live over WebSockets.", meta: 'Conversation · Message · participants' },
+    { title: 'Audio calls', body: 'Direct peer-to-peer audio between contacts, with signalling handled by the same socket connection.', meta: 'WebRTC · STUN' },
+    { title: 'Video calls', body: 'Camera streams negotiated between participants, with mute and camera toggles during the call.', meta: 'getUserMedia · RTCPeerConnection' },
+];
 
-const message = ref<string>('');
-const messages = ref<HTMLElement | null>(null);
+const stack = ['TypeScript', 'Vue 3 / Nuxt', 'Node.js / Express', 'TypeORM / MySQL', 'Socket.IO', 'WebRTC', 'Pinia', 'JWT auth'];
 
-const oncall = ref<boolean>(false);
-const focus = ref<RTCStream | null>(null);
-const RFocus = ref<HTMLDivElement | null>(null);
-const videos = ref<HTMLDivElement | null>(null);
-const width = ref<number>(0);
-const ratios = ref<{ [key: string]: number }>({});
-const video = ref<HTMLVideoElement | null>(null);
+const demoAccounts = [
+    { id: 'ana', initials: 'AM', name: 'Ana Mercier', role: 'demo account · window 1', email: 'ana.demo@tooms.app', password: 'tooms-demo-1' },
+    { id: 'ben', initials: 'BK', name: 'Ben Kowalski', role: 'demo account · window 2 (private)', email: 'ben.demo@tooms.app', password: 'tooms-demo-2' },
+];
 
-watch(() => store.conversation, (conversation) => {
-    if (!conversation) return;
-    if (!conversation.messages.length) {
-        console.log('fetching messages');
-        store.messages(conversation.page);
+const copied = ref<string | null>(null);
+let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const copy = async (key: string, value: string) => {
+    try {
+        await navigator.clipboard.writeText(value);
+    } catch (error) {
+        console.error(error);
+        return;
     }
+    copied.value = key;
+    if (copiedTimeout) clearTimeout(copiedTimeout);
+    copiedTimeout = setTimeout(() => copied.value = null, 1600);
+};
+
+const year = new Date().getFullYear();
+
+onMounted(() => {
+    // Already signed in (e.g. returning demo user) - skip straight to the app
+    if (auth.token) navigateTo('/app');
 });
-
-// Scroll to bottom when new message is added
-watch(() => store.conversation?.messages, async (message_list) => {
-    if (!message_list) return;
-    if (!messages.value) return;
-    await nextTick();
-    
-    if (messages.value.scrollTop + messages.value.clientHeight >= scroll.value) {
-        messages.value.scrollTo(0, messages.value.scrollHeight);
-    }
-
-    scroll.value = messages.value.scrollHeight;
-}, { deep: true });
-
-watch(() => rtc.stream, (stream) => {
-    if (!stream) return;
-    setupcall();
-});
-
-watch(() => rtc.streams, (value) => {
-    if (!value) return;
-    resizingVideos({ clientY: 0 } as MouseEvent, 0, videos.value?.clientHeight || 0);
-}, { deep: true });
-
-const visiocall = async () => {
-    rtc.init({ audio: true, video: true });
-}
-
-const audiocall = async () => {
-    rtc.init({ audio: true, video: false });
-}
-
-const setupcall = () => {
-    if (!rtc.stream) return;
-    oncall.value = true;
-}
-
-const prev_user = (index: number) => {
-    if (index === 0) return null;
-    if (!store.conversation) return null;
-    return store.conversation.messages[index - 1].user;
-}
-
-const send = () => {
-    if (!message.value) return;
-    if (!store.conversation) return;
-    if (!auth.user) return;
-    const msg: Message = {
-        id: 0,
-        user: auth.user,
-        content: message.value,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        conversation: store.conversation
-    };
-    store.addMessage(msg);
-    ws.send(message.value);
-
-    message.value = '';
-}
-
-const scrolling = async () => {
-    const el = scrollRef.value;
-    if (!el) return;
-    if (!store.conversation) return;
-
-    const scrollTop = el.scrollTop;
-    const scrollHeight = el.scrollHeight;
-    const clientHeight = el.clientHeight;
-    
-    // Detect if scrolled to the top (flex-col-reverse inverts behavior, this is why scrollTop is negative)
-    if (Math.abs(scrollTop) + clientHeight >= scrollHeight) {
-        const count = store.conversation.messages.length;
-        store.conversation.page++;
-        await store.messages(store.conversation.page).then(() => {
-            // If no new messages were added, decrement page
-            if (count === store.conversation?.messages.length) store.conversation.page--;
-        });
-        
-    }
-}
-
-const touchstart = (e: Event) => {
-    const touch = (e as TouchEvent).touches[0];
-    touchX.value = touch.clientX;
-}
-
-const touchend = (e: Event) => {
-    const touch = (e as TouchEvent).changedTouches[0];
-    const diff = touch.clientX - touchX.value;
-    if (diff > 100) store.mobile = false;
-}
-
-// Resize video
-const onmetadata = (stramid: string) => {
-    const videoElement = document.getElementById(stramid) as HTMLVideoElement;
-    if (!videoElement) return;
-
-    const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
-    ratios.value[stramid] = videoRatio;
-
-    resizingVideos({ clientY: 0 } as MouseEvent, 0, videos.value?.clientHeight || 0);
-}
-
-const resizingFocus = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
-    if (!RFocus.value) return;
-
-    // Initializations
-    const min = 200;
-    const max = 650;
-    const delta = e.clientY - SY;
-    const height = Math.max(Math.min(max, SHeight + delta), min);
-    RFocus.value.style.minHeight = height + 'px';
-    RFocus.value.style.maxHeight = height + 'px';
-
-    const video = document.getElementById('focus-stream') as HTMLVideoElement;
-    if (!video) return;
-    
-    const ratio = 16 / 9;
-    video.style.width = height * ratio + 'px';
-} 
-
-const resizingVideos = (e: MouseEvent, SY: number = 0, SHeight: number = 0) => {
-    if (!videos.value) return;
-
-    // Initializations
-    const min = 200;
-    const max = 650;
-    const delta = e.clientY - SY;
-    const height = Math.max(Math.min(max, SHeight + delta), min);
-    videos.value.style.minHeight = height + 'px';
-    videos.value.style.maxHeight = height + 'px';
-
-    // Calculate width and height for the videos, ratio should be user PC screen ratio
-    const ratio = 16 / 9; // Fallback ratio
-
-    // Videos cell width
-    const style = window.getComputedStyle(videos.value.children[0] as HTMLElement);
-    const cols = style.getPropertyValue('grid-template-columns').split(' ').length;
-    const gap = parseInt(style.getPropertyValue('gap').split(' ')[0]);
-    const WMax = videos.value.clientWidth / cols - gap;
-    
-    // const max = videos.value.
-    for (const stream of rtc.streams) {
-        const video = document.getElementById(stream.stream.id) as HTMLVideoElement;
-        if (!video) continue;
-
-        let W = height * ratio;
-        video.style.width = W + 'px';
-        video.style.maxWidth = WMax + 'px';
-
-        // Wait for the video to be resized
-        setTimeout(() => {
-            const H = video.clientWidth / ratio;
-            video.style.height = H + 'px';
-            // width.value = video.clientWidth;
-        }, 10);
-    }
-}
-
-const resize = (e: MouseEvent) => {
-    e.preventDefault();
-
-    const SY = e.clientY;
-    const VHeight = videos.value?.clientHeight;
-    const RHeight = RFocus.value?.clientHeight || 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-        resizingVideos(e, SY, VHeight);
-        resizingFocus(e, SY, RHeight);
-    }
-
-    const onMouseUp = () => {
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-    }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-}
-
-const focusstream = (stream: RTCStream) => {
-    focus.value = stream;
-}
-
-const toggleaudio = () => {
-    if (!rtc.stream) return;
-
-    // The order is important
-    rtc.audio = !rtc.audio;
-    rtc.stream.getAudioTracks().forEach((track) => track.enabled = rtc.audio);
-}
-
-const togglevideo = () => {
-    if (!rtc.stream) return;
-    rtc.video = !rtc.video;
-}
-
-const togglescreenshare = () => {
-    if (!rtc.stream) return;
-    // if (!video.value) return;
-
-    // The order is important
-    rtc.screen = !rtc.screen;
-    // video.value.srcObject = rtc.screen ? rtc.stream : (rtc.video ? rtc.stream : null);
-}
-
-const hangout = () => {
-    if (!rtc.stream) return;
-    rtc.hangout();
-}
-
-
-
-
-
-// TODO: move this to conversation store
-const user = computed(() => {
-    if (!auth.user) return null;
-    if (!store.conversation) return null;
-    const id = auth.user.id;
-    const notMe = store.conversation.participants.filter((participant) => participant.id !== id);
-    return notMe[0];
-});
-
-const name = () => {
-    if (!auth.user) return;
-    if (!store.conversation) return null;
-
-    const id = auth.user.id;
-    const notMe = store.conversation.participants.filter((participant) => participant.id !== id);
-
-    let name: string = ''; 
-    for (const [index, participant] of notMe.entries()) {
-        name += participant.name + ' ' + participant.lastname;
-        if (index < notMe.length - 1) name += ', ';
-        if (index === 2) {
-            name += '...';
-            break;
-        }
-    }
-
-    return name;
-}
 </script>
+
+<style scoped>
+.home {
+    --bg: oklch(0.17 0.012 285);
+    --bg-alt: oklch(0.185 0.013 286);
+    --surface: oklch(0.21 0.014 288);
+    --border: oklch(0.29 0.018 290);
+    --border-strong: oklch(0.32 0.02 290);
+    --text: oklch(0.96 0.005 285);
+    --text-dim: oklch(0.74 0.012 285);
+    --text-dimmer: oklch(0.60 0.012 285);
+    --accent: oklch(0.55 0.22 295);
+    --accent-hover: oklch(0.60 0.22 295);
+    --accent-soft: oklch(0.24 0.05 295);
+    --accent-soft-border: oklch(0.36 0.09 295);
+    --accent-soft-strong: oklch(0.28 0.07 295);
+    --accent-soft-strong-border: oklch(0.42 0.10 295);
+    --accent-text: oklch(0.85 0.08 295);
+
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.mono-meta, .mono-note, .demo-field-label, .demo-field-value, .home-shot-title, .stack-tag, .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.home-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(12px);
+    background: oklch(0.17 0.012 285 / 0.82);
+    border-bottom: 1px solid var(--border);
+}
+
+.home-header-inner, .home-container {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.home-header-inner {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+.home-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: auto;
+}
+
+.home-logo {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--accent);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: white;
+}
+
+.home-logo-sm {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    font-size: 13px;
+}
+
+.home-brand-name {
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+}
+
+.home-nav {
+    display: flex;
+    gap: 24px;
+    font-size: 14px;
+}
+
+.home-nav a, .home-footer-links a {
+    color: var(--text-dim);
+}
+
+.home-nav a:hover, .home-footer-links a:hover {
+    color: var(--text);
+}
+
+.home-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.btn-ghost {
+    font-size: 14px;
+    padding: 8px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--border-strong);
+    color: oklch(0.88 0.008 285);
+}
+
+.btn-ghost:hover {
+    border-color: var(--accent);
+    color: white;
+}
+
+.btn-primary {
+    font-size: 14px;
+    padding: 9px 15px;
+    border-radius: 9px;
+    background: var(--accent);
+    color: white;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    color: oklch(0.92 0.008 285);
+    font-size: 14.5px;
+}
+
+.btn-secondary:hover {
+    border-color: var(--accent);
+}
+
+.btn-accent {
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 9px;
+    background: var(--accent-soft-strong);
+    border: 1px solid var(--accent-soft-strong-border);
+    color: oklch(0.92 0.05 295);
+    font-weight: 500;
+}
+
+.btn-accent:hover {
+    background: oklch(0.34 0.09 295);
+}
+
+.home-hero {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 84px 24px 72px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 56px;
+    align-items: center;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 12px 6px 9px;
+    border-radius: 99px;
+    border: 1px solid var(--accent-soft-border);
+    background: var(--accent-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-text);
+    margin-bottom: 26px;
+}
+
+.badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 99px;
+    background: oklch(0.65 0.20 295);
+}
+
+.home-h1 {
+    font-size: 58px;
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+    margin: 0 0 22px;
+}
+
+.home-lead {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0 0 34px;
+    max-width: 46ch;
+}
+
+.home-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+.home-hero-actions .btn-primary {
+    padding: 14px 24px;
+    border-radius: 11px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.home-hero-actions .btn-secondary {
+    padding: 14px 22px;
+    border-radius: 11px;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.mono-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-dimmer);
+    margin: 0;
+}
+
+.mono-note-loose {
+    margin-top: 24px;
+    line-height: 1.7;
+}
+
+.home-shot-wrap {
+    position: relative;
+}
+
+.home-shot-glow {
+    position: absolute;
+    inset: -12% -6% -6%;
+    background: radial-gradient(60% 55% at 60% 40%, oklch(0.55 0.22 295 / 0.28), transparent 70%);
+    filter: blur(10px);
+}
+
+.home-shot {
+    position: relative;
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.home-shot-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.home-shot-bar span:not(.home-shot-title) {
+    width: 10px;
+    height: 10px;
+    border-radius: 99px;
+    background: oklch(0.40 0.02 290);
+}
+
+.home-shot-title {
+    margin-left: 8px;
+    font-size: 11.5px;
+    color: var(--text-dimmer);
+}
+
+.home-shot-canvas {
+    aspect-ratio: 4 / 3;
+    background-image: repeating-linear-gradient(135deg, oklch(0.24 0.02 290) 0 10px, oklch(0.22 0.016 289) 10px 20px);
+    display: grid;
+    place-items: center;
+}
+
+.home-shot-caption {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-dimmer);
+    line-height: 1.7;
+}
+
+.home-shot-caption-title {
+    font-size: 13px;
+    color: var(--accent-text);
+}
+
+.home-shot-caption .dim {
+    opacity: 0.65;
+}
+
+.home-section {
+    padding-top: 76px;
+    padding-bottom: 76px;
+}
+
+.home-section-alt {
+    border-top: 1px solid oklch(0.24 0.016 289);
+    background: var(--bg-alt);
+}
+
+.eyebrow {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-text);
+    margin: 0 0 34px;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.feature-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 26px 24px 28px;
+    background: var(--surface);
+}
+
+.feature-card:hover {
+    border-color: oklch(0.45 0.10 295);
+}
+
+.feature-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-border);
+    margin-bottom: 18px;
+}
+
+.feature-card h3 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+}
+
+.feature-card p {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0 0 16px;
+}
+
+.mono-meta {
+    font-size: 11.5px;
+    color: var(--text-dimmer);
+}
+
+.demo-grid, .stack-grid {
+    display: grid;
+    gap: 48px;
+    align-items: start;
+}
+
+.demo-grid {
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+}
+
+.eyebrow {
+    display: block;
+}
+
+.home-h3 {
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+    margin: 0 0 16px;
+}
+
+.home-h3-tight {
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.home-p {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin: 0 0 24px;
+}
+
+.demo-steps {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 15px;
+    line-height: 1.9;
+    color: oklch(0.78 0.012 285);
+}
+
+.demo-accounts {
+    display: grid;
+    gap: 16px;
+}
+
+.demo-card {
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 22px 24px;
+}
+
+.demo-card-head {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.demo-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 99px;
+    background: var(--accent-soft-strong);
+    border: 1px solid var(--accent-soft-strong-border);
+    display: grid;
+    place-items: center;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--accent-text);
+    flex-shrink: 0;
+}
+
+.demo-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.demo-cta {
+    margin-left: auto;
+}
+
+.demo-fields {
+    display: grid;
+    gap: 8px;
+}
+
+.demo-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 10px 10px 13px;
+}
+
+.demo-field-label {
+    font-size: 11px;
+    color: var(--text-dimmer);
+    width: 62px;
+    flex-shrink: 0;
+}
+
+.demo-field-value {
+    font-size: 13px;
+    color: oklch(0.92 0.008 285);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.copy-btn {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 11px;
+    border-radius: 7px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.copy-btn:hover {
+    border-color: var(--accent);
+    color: white;
+}
+
+.demo-own {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+.demo-own a {
+    color: var(--accent-text);
+    font-weight: 500;
+}
+
+.demo-own a:hover {
+    color: oklch(0.88 0.10 295);
+}
+
+.stack-grid {
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+}
+
+.stack-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.stack-tag {
+    font-size: 12.5px;
+    padding: 8px 13px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: oklch(0.86 0.01 285);
+}
+
+.about-lead {
+    font-size: 19px;
+    line-height: 1.6;
+    color: oklch(0.90 0.008 285);
+    margin: 0 0 16px;
+    max-width: 62ch;
+}
+
+.about-p {
+    max-width: 62ch;
+}
+
+.about-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.home-footer {
+    border-top: 1px solid oklch(0.24 0.016 289);
+    background: var(--bg-alt);
+}
+
+.home-footer-inner {
+    padding: 44px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+}
+
+.home-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+    font-size: 14px;
+}
+
+a {
+    text-decoration: none;
+    color: var(--accent-text);
+}
+
+a:hover {
+    color: oklch(0.88 0.10 295);
+}
+
+::selection {
+    background: oklch(0.55 0.22 295);
+    color: white;
+}
+
+@media (max-width: 720px) {
+    .home-nav {
+        display: none;
+    }
+
+    .home-h1 {
+        font-size: 40px;
+    }
+}
+</style>

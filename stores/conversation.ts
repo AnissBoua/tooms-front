@@ -46,7 +46,11 @@ export const useConversationStore = defineStore('conversation', () => {
         if (!conversation.value) return;
         try {
             const data = await useInterceptorFetch<Message[]>(`/api/conversations/${conversation.value?.id}/messages?page=${page}`);
-            conversation.value.messages.unshift(...data);
+
+            const existingIds = new Set(conversation.value.messages.map(m => m.id));
+            const fresh = data.filter(m => !existingIds.has(m.id));
+            conversation.value.messages.unshift(...fresh);
+            conversation.value.loaded = true;
         } catch (error) {
             console.error('CONVERSATION::STORE::MESSAGES');
             console.error(error);
@@ -65,28 +69,73 @@ export const useConversationStore = defineStore('conversation', () => {
         return [];
     }
 
-    async function create( data: { name: string, users: User[]}) {
+    async function create( data: { name?: string, users: User[]}) {
         try {
             const req = {
-                name: data.name,
+                name: data.name || undefined,
                 users: data.users.map(user => user.id),
             }
-            
+
             const res = await useInterceptorFetch<Conversation>('/api/conversations', {
                 method: 'POST',
                 body: req,
             });
 
+            res.messages = res.messages ?? [];
+            res.page = 1;
             conversations.value.push(res);
+
+            return res;
         } catch (error) {
             console.error('CONVERSATION::STORE::CREATE');
             console.error(error);
         }
+
+        return null;
     }
 
     function addMessage(message: Message) {
         if (!conversation.value) return;
         conversation.value.messages.push(message);
+        conversation.value.lastMessage = message;
+    }
+
+    function receiveMessage(message: Message, incrementUnread: boolean = false) {
+        const targets = new Set<Conversation>();
+        const listed = conversations.value.find(c => c.id === message.conversation.id);
+        if (listed) targets.add(listed);
+        if (conversation.value && conversation.value.id === message.conversation.id) targets.add(conversation.value);
+
+        for (const conv of targets) {
+            conv.lastMessage = message;
+            if (!conv.messages.some(m => m.id === message.id)) conv.messages.push(message);
+            if (incrementUnread) conv.unread = (conv.unread ?? 0) + 1;
+        }
+    }
+
+    async function markRead(id: number) {
+        const match = conversations.value.find(c => c.id === id);
+        if (match) match.unread = 0;
+
+        try {
+            await useInterceptorFetch(`/api/conversations/${id}/read`, { method: 'PUT' });
+        } catch (error) {
+            console.error('CONVERSATION::STORE::MARK_READ');
+            console.error(error);
+        }
+    }
+
+    function applyRead(conversationId: number, userId: number, at: string) {
+        const targets = [conversations.value.find(c => c.id === conversationId)];
+        if (conversation.value?.id === conversationId) targets.push(conversation.value);
+
+        for (const conv of targets) {
+            if (!conv) continue;
+            conv.readReceipts = conv.readReceipts ?? [];
+            const existing = conv.readReceipts.find(r => r.user === userId);
+            if (existing) existing.last_read_at = at;
+            else conv.readReceipts.push({ user: userId, last_read_at: at });
+        }
     }
 
     function initials(user: User) {
@@ -104,6 +153,9 @@ export const useConversationStore = defineStore('conversation', () => {
         search,
         create,
         addMessage,
+        receiveMessage,
+        markRead,
+        applyRead,
         initials,
     }
 });

@@ -12,8 +12,8 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
         Authorization: `Bearer ${auth.token}`,
       },
       async onResponseError({ request, response, options }) {
-        ERRORS_COUNT++;
         if (response?.status === 401) {
+          ERRORS_COUNT++;
           await auth.refresh();
           ERRORS_COUNT = 0;
         } else {
@@ -23,7 +23,16 @@ export const useInterceptorFetch = async <T = object>( url: string, options?: Re
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
+    // Only 401s are worth retrying (after the token refresh above) - anything else
+    // (400 validation, 500, network) would just fail again with the same error, and
+    // retrying here would replace it with an unrelated "Failed to refresh token" error.
+    if (error?.response?.status !== 401) {
+      console.log("Url:", url);
+      console.error("Fetch error:", error);
+      throw error;
+    }
+
     try {
       // Try the request again
       if (ERRORS_COUNT > 1) {

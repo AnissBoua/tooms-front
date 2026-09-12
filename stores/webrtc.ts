@@ -14,7 +14,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
         width: { ideal: 1280 },
         height: { ideal: 720 },
         aspectRatio: 16 / 9,
-    }; 
+    };
+    // Without these, the browser has no reference signal to cancel out its own speaker output
+    // from the mic capture - the standard cause of hearing your own voice back
+    const AConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+    };
     const ws = useWebSocketStore()
     const conversation = useConversationStore();
     const auth = useAuthStore();
@@ -63,12 +70,14 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 else peer.peer.addTrack(track, stream.value);
             }
         }
+
+        syncselfsignal();
     });
 
     watch(() => video.value, async (value) => {
         if (!stream.value) return;
 
-        
+
         if (!value) {
             const tracks = stream.value.getVideoTracks();
             tracks.forEach(track => track.stop());
@@ -84,6 +93,13 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 stream.value.removeTrack(track);
             }
         } else { // Add video track to the peer connection
+
+            const existing = stream.value.getVideoTracks();
+            existing.forEach(track => track.stop());
+            for (const track of existing) {
+                stream.value.removeTrack(track);
+            }
+
             const tmp = await devices({ audio: false, video: true });
             if (!tmp) return;
 
@@ -100,11 +116,8 @@ export const useWebRTCStore = defineStore('rtc', () => {
                 }
             }
         }
-        
 
-        for (const s of streams.value) {
-            if (s.stream.id == stream.value.id) s.signal.video = value;
-        }
+        syncselfsignal();
     });
 
     watch(() => screen.value, async (value) => {
@@ -167,6 +180,10 @@ export const useWebRTCStore = defineStore('rtc', () => {
             if (!conversation.conversation) throw new Error('No conversation selected'); // This should never happen
             if (!auth.user) throw new Error('No user authenticated'); // This should never happen
 
+            if (!stream.value) {
+                audio.value = options.audio;
+                video.value = options.video;
+            }
             await createstream(options, true);
             if (!stream.value) throw new Error('No stream available');
 
@@ -198,9 +215,12 @@ export const useWebRTCStore = defineStore('rtc', () => {
     }
 
     //#region Setup
-    async function devices(constraints: { audio: boolean, video: boolean | MediaTrackConstraints }) {
+    async function devices(constraints: { audio: boolean | MediaTrackConstraints, video: boolean | MediaTrackConstraints }) {
         if (constraints.video) {
             constraints.video = VConstraints;
+        }
+        if (constraints.audio) {
+            constraints.audio = AConstraints;
         }
         return await navigator.mediaDevices.getUserMedia(constraints);
     }
@@ -215,12 +235,10 @@ export const useWebRTCStore = defineStore('rtc', () => {
 
         if (!options.audio) {
             stream.value.getAudioTracks().forEach(track => track.enabled = false);
-            audio.value = false;
         }
 
         if (!options.video) {
             stream.value.getVideoTracks().forEach(track => track.enabled = false);
-            video.value = false;
         }
 
         // Create dummy video track, otherwise the call will think there's no video
@@ -237,6 +255,16 @@ export const useWebRTCStore = defineStore('rtc', () => {
     
             stream.value.addTrack(track);
         }
+    }
+
+    function syncselfsignal() {
+        if (!stream.value) return;
+        const s = streams.value.find(s => s.stream.id == stream.value?.id);
+        if (!s || !s.signal) return;
+
+        s.signal.audio = audio.value;
+        s.signal.video = video.value;
+        ws.call(s.signal, 'signal');
     }
 
     function addstream(stream: MediaStream, signal: RTCSignal | null) {
@@ -347,6 +375,10 @@ export const useWebRTCStore = defineStore('rtc', () => {
         oncall.value = false;
         stream.value = null;
 
+        audio.value = true;
+        video.value = true;
+        screen.value = false;
+
         for (const s of streams.value) {
             s.stream.getTracks().forEach(track => track.stop());
         }
@@ -383,7 +415,18 @@ export const useWebRTCStore = defineStore('rtc', () => {
         if (!auth.user) throw new Error("No user authenticated");
         if (!conversation.conversation) throw new Error("No conversation selected"); // This should never happen, just to satisfy TS
 
-        await createstream(options);
+        // Same reasoning as init(): only touch these when actually about to create a fresh
+        // stream. This branch is also reached for a secondary offer during an existing
+        // multi-party call, where `options` describes the *other* peer's signal, not ours -
+        // createstream() would no-op there anyway (stream.value already set), so skip entirely.
+        if (!stream.value) {
+            audio.value = options.audio;
+            video.value = options.video;
+        }
+        // `init: true` so answering with video off still gets a dummy video track, same as
+        // making a call - previously only outgoing calls got one, so an answer with both audio
+        // and video off could end up with an inconsistent stream/track setup on the caller's end.
+        await createstream(options, true);
         if (!stream.value) throw new Error("No stream available"); // This should never happen, just to satisfy TS
 
         for (const user of conversation.conversation.participants) {
@@ -643,6 +686,9 @@ export const useWebRTCStore = defineStore('rtc', () => {
     //#endregion End Negotiation
 
     function hangout() {
+        if (auth.user && conversation.conversation) {
+            ws.call({ user: auth.user.id, conversation: conversation.conversation.id } as any, 'hangout');
+        }
         logout();
     }
 
@@ -656,15 +702,25 @@ export const useWebRTCStore = defineStore('rtc', () => {
         logout();
     }
 
-    function refused(signal: RTCSignal) {
-        
-        refuses.value.push(signal.user);
+    function removepeer(userId: number) {
+        const peer = peers.value.find(p => p.user.id == userId);
+        if (peer) {
+            peer.peer.close();
+            peers.value = peers.value.filter(p => p.user.id != userId);
+        }
+        streams.value = streams.value.filter(s => s.signal?.user?.id != userId);
+    }
 
-        const peer = peers.value.find(p => p.user.id == signal.user.id);
-        if (!peer) return;
-        
-        peer.peer.close();
-        peers.value = peers.value.filter(p => p.user.id != signal.user.id);
+    function refused(signal: RTCSignal) {
+        refuses.value.push(signal.user);
+        removepeer(signal.user.id);
+    }
+
+    // The other participant told the server they hung up (see the 'hangout' socket event) -
+    // ICE state would eventually notice too, but that can take a long time to fire, so this
+    // makes their stream disappear immediately instead of lingering.
+    function peerleft(userId: number) {
+        removepeer(userId);
     }
 
     return {
@@ -689,5 +745,6 @@ export const useWebRTCStore = defineStore('rtc', () => {
         hangout,
         refuse,
         refused,
+        peerleft,
     }
 });
