@@ -29,7 +29,8 @@
                 <p class="home-lead">Tooms is a self-built team communication app: real-time messaging, one-to-one and group conversations, audio calls and video calls. I built it to practice full-stack architecture, WebSockets and WebRTC end to end.</p>
                 <div class="home-hero-actions">
                     <a href="#demo" class="btn btn-primary">Try the demo</a>
-                    <a :href="links.github" target="_blank" rel="noopener" class="btn btn-secondary">View source on GitHub</a>
+                    <a :href="links.githubBack" target="_blank" rel="noopener" class="btn btn-secondary">Backend on GitHub</a>
+                    <a :href="links.githubFront" target="_blank" rel="noopener" class="btn btn-secondary">Frontend on GitHub</a>
                 </div>
                 <p class="mono-note">No signup needed — two demo accounts are provided below.</p>
             </div>
@@ -42,11 +43,7 @@
                         <span class="home-shot-title">tooms — conversation</span>
                     </div>
                     <div class="home-shot-canvas">
-                        <div class="home-shot-caption">
-                            <div class="home-shot-caption-title">[ product shot ]</div>
-                            <div>chat window with active video call</div>
-                            <div class="dim">1440 × 1080 · drop a screenshot here</div>
-                        </div>
+                        <img src="/images/screenshot.png" alt="Tooms conversation view with an active call" class="home-shot-img" />
                     </div>
                 </div>
             </div>
@@ -57,7 +54,7 @@
                 <h2 class="eyebrow">What it does</h2>
                 <div class="feature-grid">
                     <div v-for="f in features" :key="f.title" class="feature-card">
-                        <div class="feature-icon"></div>
+                        <div class="feature-icon"><Icon :name="f.icon" /></div>
                         <h3>{{ f.title }}</h3>
                         <p>{{ f.body }}</p>
                         <div class="mono-meta">{{ f.meta }}</div>
@@ -132,8 +129,9 @@
                 <p class="about-lead">I'm a developer, and Tooms is my own side project — no team, no company behind it. The first version was all about getting the functionality right: authentication, persistent conversations, live message delivery and peer-to-peer calls.</p>
                 <p class="home-p about-p">It's here so recruiters can look at working code and a running app rather than a list of technologies on a CV. Everything is open source, and I'm happy to walk through any part of it.</p>
                 <div class="about-actions">
-                    <a :href="links.github" target="_blank" rel="noopener" class="btn btn-secondary">Read the code</a>
-                    <a :href="'mailto:' + links.email" class="btn btn-secondary">Get in touch</a>
+                    <a :href="links.githubBack" target="_blank" rel="noopener" class="btn btn-secondary">Read the backend code</a>
+                    <a :href="links.githubFront" target="_blank" rel="noopener" class="btn btn-secondary">Read the frontend code</a>
+                    <a :href="links.portfolio" target="_blank" rel="noopener" class="btn btn-secondary">Get in touch</a>
                 </div>
             </div>
         </section>
@@ -145,7 +143,8 @@
                     <span class="mono-meta">Tooms — personal project, {{ year }}</span>
                 </div>
                 <div class="home-footer-links">
-                    <a :href="links.github" target="_blank" rel="noopener">GitHub</a>
+                    <a :href="links.githubBack" target="_blank" rel="noopener">Backend repo</a>
+                    <a :href="links.githubFront" target="_blank" rel="noopener">Frontend repo</a>
                     <a v-if="links.linkedin" :href="links.linkedin" target="_blank" rel="noopener">LinkedIn</a>
                     <a :href="'mailto:' + links.email">{{ links.email }}</a>
                 </div>
@@ -165,15 +164,17 @@ useHead({
 const auth = useAuthStore();
 
 const links = {
-    github: 'https://github.com/AnissBoua',
+    githubBack: 'https://github.com/AnissBoua/tooms-back',
+    githubFront: 'https://github.com/AnissBoua/tooms-front',
+    portfolio: 'https://anisse-bouainbi.fr/',
     linkedin: 'https://www.linkedin.com/in/anisse-bouainbi/',
     email: 'anissbouainbi@hotmail.it',
 };
 
 const features = [
-    { title: 'Messaging', body: "One-to-one and group conversations with persisted history, delivered live over WebSockets.", meta: 'Conversation · Message · participants' },
-    { title: 'Audio calls', body: 'Direct peer-to-peer audio between contacts, with signalling handled by the same socket connection.', meta: 'WebRTC · STUN' },
-    { title: 'Video calls', body: 'Camera streams negotiated between participants, with mute and camera toggles during the call.', meta: 'getUserMedia · RTCPeerConnection' },
+    { title: 'Messaging', icon: 'tabler:message-circle-2', body: "One-to-one and group conversations with persisted history, delivered live over WebSockets.", meta: 'Conversation · Message · participants' },
+    { title: 'Audio calls', icon: 'tabler:phone', body: 'Direct peer-to-peer audio between contacts, with signalling handled by the same socket connection.', meta: 'WebRTC · STUN' },
+    { title: 'Video calls', icon: 'tabler:video', body: 'Camera streams negotiated between participants, with mute and camera toggles during the call.', meta: 'getUserMedia · RTCPeerConnection' },
 ];
 
 const stack = ['TypeScript', 'Vue 3 / Nuxt', 'Node.js / Express', 'TypeORM / MySQL', 'Socket.IO', 'WebRTC', 'Pinia', 'JWT auth'];
@@ -492,27 +493,18 @@ onMounted(() => {
 }
 
 .home-shot-canvas {
-    aspect-ratio: 4 / 3;
-    background-image: repeating-linear-gradient(135deg, oklch(0.24 0.02 290) 0 10px, oklch(0.22 0.016 289) 10px 20px);
+    aspect-ratio: 16 / 9;
     display: grid;
     place-items: center;
+    overflow: hidden;
 }
 
-.home-shot-caption {
-    text-align: center;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12.5px;
-    color: var(--text-dimmer);
-    line-height: 1.7;
-}
-
-.home-shot-caption-title {
-    font-size: 13px;
-    color: var(--accent-text);
-}
-
-.home-shot-caption .dim {
-    opacity: 0.65;
+.home-shot-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    display: block;
 }
 
 .home-section {
@@ -558,6 +550,10 @@ onMounted(() => {
     background: var(--accent-soft);
     border: 1px solid var(--accent-soft-border);
     margin-bottom: 18px;
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    color: var(--accent-text);
 }
 
 .feature-card h3 {
